@@ -376,6 +376,85 @@
       touch-action: none;
     }
 
+    #slippyDock {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      z-index: 70;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px 10px 10px;
+      border: 1px solid rgba(120, 145, 170, 0.48);
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.92), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(234, 242, 249, 0.95));
+      box-shadow:
+        0 10px 28px rgba(18, 34, 52, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.82) inset;
+      color: #18314b;
+      transition:
+        transform 220ms ease,
+        box-shadow 220ms ease,
+        background 220ms ease;
+    }
+
+    #slippyDock:hover {
+      transform: translateY(-1px);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.96), transparent 36%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(228, 239, 248, 0.98));
+      box-shadow:
+        0 14px 32px rgba(18, 34, 52, 0.15),
+        0 1px 0 rgba(255, 255, 255, 0.86) inset;
+    }
+
+    #slippyDockBadge {
+      width: 48px;
+      height: 48px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.78), transparent 36%),
+        linear-gradient(180deg, #d7ecfb, #bcdcf3);
+      border: 1px solid rgba(112, 147, 183, 0.34);
+      overflow: hidden;
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.72) inset,
+        0 6px 14px rgba(36, 78, 116, 0.12);
+    }
+
+    #slippyDockBadge img {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    #slippyDockText {
+      display: grid;
+      gap: 1px;
+      text-align: left;
+      line-height: 1.1;
+    }
+
+    #slippyDockTitle {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #slippyDockHint {
+      font-size: 11px;
+      color: #5e748a;
+      font-weight: 600;
+    }
+
     .drag-handle {
       cursor: grab;
     }
@@ -391,6 +470,16 @@
       height: 519px;
       z-index: 10;
       will-change: left, top;
+      transform-origin: top left;
+      transition:
+        opacity 280ms ease,
+        transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #slippy.dock-mini {
+      opacity: 0.04;
+      transform: scale(0.12);
+      pointer-events: none;
     }
 
     #slippyHitbox {
@@ -629,9 +718,19 @@
       touch-action: none;
       cursor: grab;
       will-change: left, top;
+      transform-origin: top left;
+      transition:
+        opacity 260ms ease,
+        transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
       filter:
         drop-shadow(0 10px 20px rgba(18, 34, 52, 0.1))
         drop-shadow(0 18px 32px rgba(18, 34, 52, 0.14));
+    }
+
+    #bubble.dock-mini {
+      opacity: 0;
+      transform: scale(0.16);
+      pointer-events: none;
     }
 
     #bubble::after {
@@ -1067,8 +1166,18 @@
     }
   </style>
 </head>
-<body>
+  <body>
   <div id="stage">
+    <button id="slippyDock" type="button" aria-label="Wake Slippy">
+      <span id="slippyDockBadge" aria-hidden="true">
+        <img src="assets/slippy_show.png" alt="" />
+      </span>
+      <span id="slippyDockText">
+        <span id="slippyDockTitle">Slippy</span>
+        <span id="slippyDockHint">Wake him up</span>
+      </span>
+    </button>
+
     <div id="siteScroll">
       <div id="siteCanvas">
         <div class="siteShell">
@@ -1372,6 +1481,9 @@
 
       const stage = document.getElementById('stage');
       const siteScroll = document.getElementById('siteScroll');
+      const slippyDock = document.getElementById('slippyDock');
+      const slippyDockTitle = document.getElementById('slippyDockTitle');
+      const slippyDockHint = document.getElementById('slippyDockHint');
       const bubble = document.getElementById('bubble');
       const bubbleContent = document.getElementById('bubbleContent');
       const sightlineInk = document.getElementById('sightlineInk');
@@ -1426,6 +1538,7 @@
       const pupilScaleY = 6.6 / 18.8;
       const SCRIPTED_MOVE_DURATION_MS = 320;
       const BUBBLE_RETURN_DURATION_MS = 420;
+      const DOCK_TRANSITION_MS = 420;
       const INVALID_DROP_DELAY_MS = 1200;
       const BUBBLE_FOLLOW_TAU_MS = 330;
       const ATTENTION_LINE_PAD_PX = 10;
@@ -1470,6 +1583,7 @@
         buttons: [],
         tourStepIndex: 0,
         panelMinimized: true,
+        dockState: 'docked',
         isMirrored: false,
         eyeIntensity: 1,
         overlayDirty: true,
@@ -1812,7 +1926,48 @@
         return Math.max(12, window.innerWidth - 284);
       }
 
+      function isSlippyDocked() {
+        return state.dockState === 'docked';
+      }
+
+      function isSlippyTransitioning() {
+        return state.dockState === 'launching' || state.dockState === 'dismissing';
+      }
+
+      function shouldShowActiveSlippyScene() {
+        return state.dockState !== 'docked';
+      }
+
+      function getDockedCharPos() {
+        const rect = slippyDock.getBoundingClientRect();
+        return {
+          x: Math.round(rect.left + ((rect.width - state.charSize.w) / 2)),
+          y: Math.round(rect.top + ((rect.height - state.charSize.h) / 2))
+        };
+      }
+
+      function getDockedBubblePos() {
+        const rect = slippyDock.getBoundingClientRect();
+        return {
+          x: Math.round(rect.left + ((rect.width - state.bubbleSize.w) / 2)),
+          y: Math.round(rect.top + ((rect.height - state.bubbleSize.h) / 2))
+        };
+      }
+
+      function syncDockUi() {
+        const docked = isSlippyDocked();
+        const dismissing = state.dockState === 'dismissing';
+        slippyDockTitle.textContent = docked ? 'Slippy' : 'Hide Slippy';
+        slippyDockHint.textContent = docked
+          ? 'Wake him up'
+          : (dismissing ? 'Whooshing home' : 'Send him home');
+        slippyDock.setAttribute('aria-label', docked ? 'Wake Slippy' : 'Hide Slippy');
+        slippyDock.setAttribute('aria-pressed', docked ? 'false' : 'true');
+      }
+
       function syncPanelVisibility() {
+        const showPanel = shouldShowActiveSlippyScene();
+        controlPanel.style.display = showPanel ? 'block' : 'none';
         controlPanel.classList.toggle('panel-minimized', Boolean(state.panelMinimized));
         document.documentElement.dataset.panelMinimized = String(Boolean(state.panelMinimized));
       }
@@ -2039,6 +2194,23 @@
       }
 
       function renderTourFocusOverlay(force = false) {
+        if (isSlippyDocked() || state.dockState === 'dismissing') {
+          state.tourOverlay = {
+            frameRect: null,
+            arrowRect: null,
+            targetRect: null,
+            targetVisible: false,
+            arrowDirection: 'none'
+          };
+          state.overlayDirty = false;
+          tourTargetFrame.style.display = 'none';
+          tourTargetArrow.style.display = 'none';
+          tourTargetArrow.disabled = true;
+          document.documentElement.dataset.tourTargetVisible = 'false';
+          document.documentElement.dataset.tourArrow = 'none';
+          renderOverlayDebugBounds(state.tourOverlay);
+          return state.tourOverlay;
+        }
         if (!force && !state.overlayDirty) {
           renderOverlayDebugBounds(state.tourOverlay);
           return state.tourOverlay;
@@ -2046,6 +2218,16 @@
         const overlay = computeTourOverlayGeometry();
         state.tourOverlay = overlay;
         state.overlayDirty = false;
+
+        if (state.dockState !== 'active') {
+          tourTargetFrame.style.display = 'none';
+          tourTargetArrow.style.display = 'none';
+          tourTargetArrow.disabled = true;
+          document.documentElement.dataset.tourTargetVisible = overlay.targetVisible ? 'true' : 'false';
+          document.documentElement.dataset.tourArrow = 'none';
+          renderOverlayDebugBounds(overlay);
+          return overlay;
+        }
 
         if (!overlay.frameRect) {
           tourTargetFrame.style.display = 'none';
@@ -2274,6 +2456,9 @@
           return;
         }
         sightlineInk.innerHTML = '';
+        if (!shouldShowActiveSlippyScene() || state.dockState !== 'active') {
+          return;
+        }
         const showSightline = Boolean(state.debugVisuals.sightline);
         const showCorridor = Boolean(state.debugVisuals.sightlineCorridor);
         if (!showSightline && !showCorridor) {
@@ -3030,6 +3215,9 @@
       }
 
       function schedulePendingStepSolve(delayMs = 0) {
+        if (!shouldShowActiveSlippyScene()) {
+          return;
+        }
         clearPendingStepSolveTimer();
         pendingStepSolveTimer = window.setTimeout(() => {
           pendingStepSolveTimer = 0;
@@ -3038,6 +3226,9 @@
       }
 
       function scheduleScrollSolve(delayMs = 0) {
+        if (!shouldShowActiveSlippyScene()) {
+          return;
+        }
         clearPendingScrollSolveTimer();
         pendingScrollSolveTimer = window.setTimeout(() => {
           pendingScrollSolveTimer = 0;
@@ -3085,6 +3276,9 @@
       }
 
       function applySolvedSceneLayout(options = {}) {
+        if (!shouldShowActiveSlippyScene()) {
+          return state.lastSolverLayout;
+        }
         const layout = solveSceneLayout();
         state.lastSolverLayout = {
           charPos: clonePos(layout.charPos),
@@ -3112,6 +3306,11 @@
       }
 
       function applySolvedBubbleLayoutForCurrentSlippy(options = {}) {
+        if (!shouldShowActiveSlippyScene()) {
+          return {
+            bubbleOffset: clonePos(state.bubbleOffset)
+          };
+        }
         const overlay = renderTourFocusOverlay(true);
         const currentCharPos = clonePos(state.charPos);
         const bubbleLayout = solveBubbleLayoutForChar(currentCharPos, overlay);
@@ -3206,7 +3405,7 @@
       }
 
       function finalizePendingStepSolve() {
-        if (!state.pendingStepSolve) {
+        if (!state.pendingStepSolve || !shouldShowActiveSlippyScene()) {
           return;
         }
         state.pendingStepSolve = false;
@@ -3230,6 +3429,9 @@
         clearInvalidReturn('slippy');
         clearInvalidReturn('bubble');
         requestOverlayRefresh();
+        if (!shouldShowActiveSlippyScene()) {
+          return;
+        }
         if (options.scroll !== false) {
           const scrolled = scrollToTourTarget(step, options.behavior || 'smooth');
           if (scrolled && options.behavior !== 'auto') {
@@ -3776,6 +3978,12 @@
 
       function renderBubble() {
         syncTourSceneState();
+        if (!shouldShowActiveSlippyScene()) {
+          tailInk.innerHTML = '';
+          bubbleContent.innerHTML = '';
+          Array.from(bubble.querySelectorAll('.bubbleAction')).forEach((node) => node.remove());
+          return;
+        }
         const tail = calculateSmartTail();
         tailInk.innerHTML = '';
 
@@ -4367,6 +4575,7 @@
       }
 
       function applyLayout() {
+        syncDockUi();
         syncPanelVisibility();
         const panelSize = { w: controlPanel.offsetWidth || 260, h: controlPanel.offsetHeight || 230 };
         const clampedPanel = clampWithinViewport(state.panelPos, panelSize, 8);
@@ -4395,6 +4604,13 @@
           borderRadius: `${Math.round(slippyCapsuleRect.radius)}px`
         });
 
+        const showScene = shouldShowActiveSlippyScene();
+        slippy.style.display = showScene ? 'block' : 'none';
+        bubble.style.display = showScene ? 'block' : 'none';
+        stageBubbleSvg.style.display = showScene ? 'block' : 'none';
+        slippy.classList.toggle('dock-mini', state.dockState === 'launching' || state.dockState === 'dismissing');
+        bubble.classList.toggle('dock-mini', state.dockState === 'launching' || state.dockState === 'dismissing');
+
         slippy.style.width = `${state.charSize.w}px`;
         slippy.style.height = `${state.charSize.h}px`;
         slippy.style.setProperty('--slippy-scale', state.layoutScale.toFixed(4));
@@ -4418,13 +4634,82 @@
         state.stance = stance;
         if (stance === 'pointer') {
           syncSlippyBodyImage();
-          bubble.style.display = 'block';
         } else if (stance === 'confirm') {
           slippyBase.src = assets.confirm;
-          bubble.style.display = 'block';
         } else {
           slippyBase.src = assets.thumbs;
-          bubble.style.display = 'block';
+        }
+      }
+
+      function completeDocking() {
+        state.dockState = 'docked';
+        state.pendingStepSolve = false;
+        clearPendingStepSolveTimer();
+        clearPendingScrollSolveTimer();
+        stopCharAnimation();
+        stopBubbleAnimation();
+        state.charPos = clonePos(getDockedCharPos());
+        state.charTargetPos = clonePos(state.charPos);
+        state.bubblePos = clonePos(getDockedBubblePos());
+        requestOverlayRefresh();
+        applyLayout();
+      }
+
+      function dockSlippy() {
+        if (state.dockState === 'docked' || state.dockState === 'dismissing') {
+          return;
+        }
+        state.dockState = 'dismissing';
+        state.panelMinimized = true;
+        clearPendingStepSolveTimer();
+        clearPendingScrollSolveTimer();
+        stopBubbleAnimation();
+        startCharAnimation(getDockedCharPos(), DOCK_TRANSITION_MS);
+        startBubbleAnimation(getDockedBubblePos(), Math.max(260, DOCK_TRANSITION_MS - 40));
+        requestOverlayRefresh();
+        applyLayout();
+        window.setTimeout(() => {
+          if (state.dockState === 'dismissing') {
+            completeDocking();
+          }
+        }, DOCK_TRANSITION_MS);
+      }
+
+      function wakeSlippy() {
+        if (state.dockState === 'active' || state.dockState === 'launching') {
+          return;
+        }
+        state.dockState = 'launching';
+        state.panelMinimized = true;
+        state.charPos = clonePos(getDockedCharPos());
+        state.charTargetPos = clonePos(state.charPos);
+        state.bubblePos = clonePos(getDockedBubblePos());
+        state.pendingStepSolve = false;
+        clearPendingStepSolveTimer();
+        clearPendingScrollSolveTimer();
+        requestOverlayRefresh();
+        const layout = applySolvedSceneLayout({
+          animateSlippy: true,
+          placeBubbleNow: false,
+          durationMs: DOCK_TRANSITION_MS
+        });
+        const bubbleTarget = getBubbleTargetPos(layout.charPos, layout.bubbleOffset);
+        startBubbleAnimation(bubbleTarget, Math.max(280, DOCK_TRANSITION_MS - 30));
+        applyLayout();
+        window.setTimeout(() => {
+          if (state.dockState === 'launching') {
+            state.dockState = 'active';
+            requestOverlayRefresh();
+            applyLayout();
+          }
+        }, DOCK_TRANSITION_MS);
+      }
+
+      function toggleSlippyDock() {
+        if (isSlippyDocked()) {
+          wakeSlippy();
+        } else if (!isSlippyTransitioning()) {
+          dockSlippy();
         }
       }
 
@@ -4460,7 +4745,7 @@
         state.buttons = getActiveBubbleButtons();
         bubbleTextInput.value = TOUR_STEPS[0].title;
         modeSelect.value = state.mode;
-        applySolvedSceneLayout({ animateSlippy: false, placeBubbleNow: true });
+        completeDocking();
         applyLayout();
       }
 
@@ -4480,11 +4765,16 @@
         setStance('pointer');
         eyeIntensity.value = String(state.eyeIntensity);
         eyeValue.textContent = `${state.eyeIntensity.toFixed(1)}x`;
-        applyTourStep(0, { scroll: true, behavior: 'smooth' });
+        if (shouldShowActiveSlippyScene()) {
+          applyTourStep(0, { scroll: true, behavior: 'smooth' });
+        }
         applyLayout();
       }
 
       function beginDrag(event, kind) {
+        if (!shouldShowActiveSlippyScene() || isSlippyTransitioning()) {
+          return;
+        }
         if (event.button !== 0) {
           return;
         }
@@ -4596,6 +4886,13 @@
 
       function handleResize() {
         requestOverlayRefresh();
+        if (isSlippyDocked()) {
+          state.charPos = clonePos(getDockedCharPos());
+          state.charTargetPos = clonePos(state.charPos);
+          state.bubblePos = clonePos(getDockedBubblePos());
+          applyLayout();
+          return;
+        }
         if (!state.dragPinnedSlippy && !state.dragPinnedBubble && !currentDrag) {
           applySolvedSceneLayout({ animateSlippy: false });
         } else {
@@ -4724,6 +5021,10 @@
       }
 
       document.querySelector('#slippyDragHotspot').addEventListener('pointerdown', (event) => beginDrag(event, 'slippy'));
+      slippyDock.addEventListener('click', (event) => {
+        event.preventDefault();
+        toggleSlippyDock();
+      });
       bubble.addEventListener('pointerdown', (event) => {
         if (event.target && typeof event.target.closest === 'function' && event.target.closest('.bubbleAction')) {
           return;
@@ -4768,6 +5069,8 @@
           advanceTourStep();
         } else if (action === 'tour_restart') {
           restartTour({ scroll: true, behavior: 'smooth' });
+        } else if (action === 'dock_slippy') {
+          dockSlippy();
         }
       });
 
@@ -4806,6 +5109,7 @@
       applyEyeRigCalibration();
       syncDebugControls();
       state.panelPos.x = getDefaultPanelX();
+      completeDocking();
       window.__slippyDemoTest = {
         getSnapshot() {
           return {
@@ -4843,6 +5147,12 @@
         },
         setTourStep(index) {
           applyTourStep(Number(index) || 0, { scroll: false });
+        },
+        wakeSlippy() {
+          wakeSlippy();
+        },
+        dockSlippy() {
+          dockSlippy();
         },
         getEyeRig() {
           return {
