@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Slippy Playground</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --panel: #ffffff;
+      --panel-edge: #cbd5e1;
+      --accent: #2563eb;
+      --accent-2: #0ea5e9;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+      font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 25% 10%, rgba(186, 230, 253, 0.4), transparent 34%),
+        radial-gradient(circle at 84% 92%, rgba(191, 219, 254, 0.34), transparent 32%),
+        #fff;
+      overflow: hidden;
+    }
+
+    .draggable {
+      touch-action: none;
+      cursor: grab;
+    }
+
+    .draggable:active {
+      cursor: grabbing;
+    }
+
+    #bubble {
+      position: absolute;
+      width: 460px;
+      height: 300px;
+      z-index: 20;
+      transform-origin: center;
+    }
+
+    #bubbleSkin {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #bubbleContent {
+      position: absolute;
+      inset: 36px 38px 78px 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    #bubbleText {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.28;
+      letter-spacing: 0.2px;
+      text-align: center;
+      text-wrap: balance;
+      min-height: 86px;
+      pointer-events: none;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .bubbleBtns {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .bubbleBtn {
+      border: 2px solid #1e293b;
+      border-radius: 10px;
+      background: #fff;
+      color: #0f172a;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #1e293b;
+    }
+
+    .bubbleBtn:hover {
+      background: #f8fafc;
+    }
+
+    .bubbleBtn:active {
+      transform: translateY(2px);
+      box-shadow: 0 0 0 #1e293b;
+    }
+
+    #slippy {
+      position: absolute;
+      width: 320px;
+      height: 360px;
+      z-index: 14;
+    }
+
+    #armRoot {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #armBone {
+      position: absolute;
+      height: 22px;
+      width: 120px;
+      border: 2px solid #1f2937;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ffe5bd, #f4c88f);
+      transform-origin: 10px 50%;
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    #armHand {
+      position: absolute;
+      right: -22px;
+      top: -5px;
+      width: 52px;
+      height: 30px;
+      pointer-events: none;
+    }
+
+    #slippyVisual {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 66%;
+      z-index: 2;
+      will-change: transform;
+    }
+
+    #slippyBase {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .eye {
+      position: absolute;
+      width: 30px;
+      height: 36px;
+      border-radius: 50%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .eye.left {
+      left: 131px;
+      top: 98px;
+    }
+
+    .eye.right {
+      left: 169px;
+      top: 98px;
+    }
+
+    .pupil {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 13px;
+      height: 13px;
+      margin-left: -6.5px;
+      margin-top: -6.5px;
+      border-radius: 50%;
+      background: #020617;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+      transform: translate(0, 0);
+      will-change: transform;
+    }
+
+    .pupil::after {
+      content: "";
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      left: 2px;
+      top: 1px;
+      border-radius: 50%;
+      background: #fff;
+      opacity: 0.95;
+    }
+
+    .eyeShine {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      pointer-events: none;
+    }
+
+    .eyeShine.big {
+      width: 6px;
+      height: 6px;
+      left: 4px;
+      top: 4px;
+      opacity: 0.9;
+    }
+
+    .eyeShine.small {
+      width: 3px;
+      height: 3px;
+      right: 5px;
+      bottom: 5px;
+      opacity: 0.62;
+    }
+
+    #controlPanel {
+      position: absolute;
+      left: 22px;
+      top: 22px;
+      width: 264px;
+      background: var(--panel);
+      border: 1px solid var(--panel-edge);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      z-index: 32;
+      overflow: hidden;
+    }
+
+    #panelHead {
+      padding: 9px 12px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: move;
+    }
+
+    #panelBody {
+      padding: 10px;
+      display: grid;
+      gap: 9px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+    }
+
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #475569;
+      margin: 0 0 4px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font: inherit;
+      font-size: 13px;
+      color: #0f172a;
+      background: #fff;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid #93c5fd;
+      border-color: #60a5fa;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ctlBtn {
+      flex: 1;
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      background: #fff;
+      padding: 7px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+      cursor: pointer;
+    }
+
+    .ctlBtn:hover {
+      background: #f1f5f9;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .toggle input {
+      width: 16px;
+      height: 16px;
+    }
+
+    .rangeRow {
+      display: grid;
+      gap: 4px;
+    }
+
+    .meter {
+      font-size: 11px;
+      color: #0f172a;
+      opacity: 0.7;
+      text-align: right;
+      margin: 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #2563eb;
+    }
+
+    #status {
+      min-height: 20px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      font-size: 12px;
+      color: #1d4ed8;
+    }
+
+    #note {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      font-size: 12px;
+      opacity: 0.62;
+      pointer-events: none;
+      z-index: 4;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="bubble" class="draggable" aria-label="Draggable speech bubble">
+      <img id="bubbleSkin" src="assets/bubble_speech.svg" alt="Speech bubble" />
+      <div id="bubbleContent">
+        <p id="bubbleText">Hey. Drag me and drag Slippy. He tracks me with his eyes and pointer arm.</p>
+        <div class="bubbleBtns">
+          <button class="bubbleBtn" id="bubbleActionA" type="button">Tell Joke</button>
+          <button class="bubbleBtn" id="bubbleActionB" type="button">Point Harder</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="slippy" class="draggable" aria-label="Draggable Slippy puppet">
+      <div id="armRoot">
+        <div id="armBone"><img id="armHand" src="assets/slippy_hand_point.svg" alt="" /></div>
+      </div>
+      <div id="slippyVisual">
+        <img id="slippyBase" src="assets/slippy_base.svg" alt="Slippy cartoon puppet" />
+        <div class="eye left">
+          <div class="pupil"></div>
+          <div class="eyeShine big"></div>
+          <div class="eyeShine small"></div>
+        </div>
+        <div class="eye right">
+          <div class="pupil"></div>
+          <div class="eyeShine big"></div>
+          <div class="eyeShine small"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="controlPanel" aria-label="Sandbox control panel">
+      <div id="panelHead">Slippy Sandbox (drag me)</div>
+      <div id="panelBody">
+        <div>
+          <p class="label">Bubble Line</p>
+          <input id="textEditor" type="text" value="Hey. Drag me and drag Slippy. He tracks me with his eyes and pointer arm." />
+        </div>
+
+        <div class="row">
+          <button id="btnPreset" class="ctlBtn" type="button">Random Prompt</button>
+          <button id="btnSwap" class="ctlBtn" type="button">Swap Sides</button>
+          <button id="btnReset" class="ctlBtn" type="button">Reset</button>
+        </div>
+
+        <label class="toggle">
+          <span>Thought Bubble</span>
+          <input id="thoughtToggle" type="checkbox" />
+        </label>
+
+        <div class="rangeRow">
+          <p class="label">Eye Follow Strength</p>
+          <input id="eyeStrength" type="range" min="2" max="11" step="0.5" value="6.5" />
+          <p id="eyeValue" class="meter">6.5</p>
+        </div>
+
+        <div id="status">Ready. Drag either object.</div>
+      </div>
+    </div>
+
+    <div id="note">Standalone local demo. No network or build step required.</div>
+  </div>
+
+  <script>
+    const stage = document.getElementById('stage');
+    const bubble = document.getElementById('bubble');
+    const bubbleSkin = document.getElementById('bubbleSkin');
+    const bubbleText = document.getElementById('bubbleText');
+    const slippy = document.getElementById('slippy');
+    const slippyVisual = document.getElementById('slippyVisual');
+    const armBone = document.getElementById('armBone');
+    const pupils = Array.from(document.querySelectorAll('.pupil'));
+    const eyes = Array.from(document.querySelectorAll('.eye'));
+
+    const panel = document.getElementById('controlPanel');
+    const panelHead = document.getElementById('panelHead');
+    const textEditor = document.getElementById('textEditor');
+    const thoughtToggle = document.getElementById('thoughtToggle');
+    const eyeStrength = document.getElementById('eyeStrength');
+    const eyeValue = document.getElementById('eyeValue');
+    const btnPreset = document.getElementById('btnPreset');
+    const btnSwap = document.getElementById('btnSwap');
+    const btnReset = document.getElementById('btnReset');
+    const bubbleActionA = document.getElementById('bubbleActionA');
+    const bubbleActionB = document.getElementById('bubbleActionB');
+    const status = document.getElementById('status');
+
+    const state = {
+      slippy: { x: 120, y: 240 },
+      bubble: { x: 470, y: 84 },
+      panel: { x: 22, y: 22 },
+      defaults: {
+        slippy: { x: 120, y: 240 },
+        bubble: { x: 470, y: 84 },
+        panel: { x: 22, y: 22 }
+      },
+      facing: 1,
+      eyeReach: 6.5,
+      thought: false,
+      jokes: [
+        "If you drag me faster, my spring thinks it's cardio.",
+        "I point for a living. Zero vacation days.",
+        "My eyes track better than my life choices.",
+        "This is definitely a serious production system."
+      ],
+      promptIndex: 0
+    };
+
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    function setStatus(msg) {
+      status.textContent = msg;
+    }
+
+    function placeAll() {
+      slippy.style.left = `${state.slippy.x}px`;
+      slippy.style.top = `${state.slippy.y}px`;
+      bubble.style.left = `${state.bubble.x}px`;
+      bubble.style.top = `${state.bubble.y}px`;
+      panel.style.left = `${state.panel.x}px`;
+      panel.style.top = `${state.panel.y}px`;
+    }
+
+    function centerOf(el) {
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    function updateEyes(targetCenter) {
+      const reach = Number(state.eyeReach);
+      eyes.forEach((eye, i) => {
+        const e = eye.getBoundingClientRect();
+        const cx = e.left + e.width / 2;
+        const cy = e.top + e.height / 2;
+        const dx = targetCenter.x - cx;
+        const dy = targetCenter.y - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        const ox = (dx / len) * reach;
+        const oy = (dy / len) * reach;
+        pupils[i].style.transform = `translate(${ox}px, ${oy}px)`;
+      });
+    }
+
+    function updateTracking() {
+      const targetCenter = centerOf(bubble);
+      const slippyCenter = centerOf(slippy);
+
+      state.facing = targetCenter.x >= slippyCenter.x ? 1 : -1;
+      slippyVisual.style.transform = `scaleX(${state.facing})`;
+
+      const shoulder = {
+        x: state.facing === 1 ? 222 : 98,
+        y: 224
+      };
+
+      const shoulderWorld = {
+        x: state.slippy.x + shoulder.x,
+        y: state.slippy.y + shoulder.y
+      };
+
+      const dx = targetCenter.x - shoulderWorld.x;
+      const dy = targetCenter.y - shoulderWorld.y;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      const reach = clamp(Math.hypot(dx, dy), 54, 185);
+
+      armBone.style.left = `${shoulder.x - 10}px`;
+      armBone.style.top = `${shoulder.y - 11}px`;
+      armBone.style.width = `${reach}px`;
+      armBone.style.transform = `rotate(${angle}deg)`;
+
+      updateEyes(targetCenter);
+    }
+
+    function fitToViewport() {
+      state.slippy.x = clamp(state.slippy.x, 0, window.innerWidth - slippy.offsetWidth);
+      state.slippy.y = clamp(state.slippy.y, 0, window.innerHeight - slippy.offsetHeight);
+      state.bubble.x = clamp(state.bubble.x, 0, window.innerWidth - bubble.offsetWidth);
+      state.bubble.y = clamp(state.bubble.y, 0, window.innerHeight - bubble.offsetHeight);
+      state.panel.x = clamp(state.panel.x, 0, window.innerWidth - panel.offsetWidth);
+      state.panel.y = clamp(state.panel.y, 0, window.innerHeight - panel.offsetHeight);
+      placeAll();
+      updateTracking();
+    }
+
+    function makeDraggable(el, key, handle) {
+      let drag = null;
+
+      const downTarget = handle || el;
+      downTarget.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+
+        if (key === 'bubble' && (e.target.closest('.bubbleBtn') || e.target.closest('input'))) {
+          return;
+        }
+
+        const rect = el.getBoundingClientRect();
+        drag = {
+          id: e.pointerId,
+          ox: e.clientX - rect.left,
+          oy: e.clientY - rect.top
+        };
+
+        downTarget.setPointerCapture(e.pointerId);
+      });
+
+      downTarget.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const maxX = window.innerWidth - el.offsetWidth;
+        const maxY = window.innerHeight - el.offsetHeight;
+        state[key].x = clamp(e.clientX - drag.ox, 0, maxX);
+        state[key].y = clamp(e.clientY - drag.oy, 0, maxY);
+        placeAll();
+        updateTracking();
+      });
+
+      const stop = (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        drag = null;
+      };
+
+      downTarget.addEventListener('pointerup', stop);
+      downTarget.addEventListener('pointercancel', stop);
+    }
+
+    textEditor.addEventListener('input', () => {
+      bubbleText.textContent = textEditor.value.trim() || '...';
+    });
+
+    thoughtToggle.addEventListener('change', () => {
+      state.thought = thoughtToggle.checked;
+      bubbleSkin.src = state.thought ? 'assets/bubble_thought.svg' : 'assets/bubble_speech.svg';
+      setStatus(state.thought ? 'Thought bubble mode.' : 'Speech bubble mode.');
+      updateTracking();
+    });
+
+    eyeStrength.addEventListener('input', () => {
+      state.eyeReach = Number(eyeStrength.value);
+      eyeValue.textContent = state.eyeReach.toFixed(1);
+      setStatus(`Eye follow strength: ${state.eyeReach.toFixed(1)}`);
+      updateTracking();
+    });
+
+    btnPreset.addEventListener('click', () => {
+      state.promptIndex = (state.promptIndex + 1) % state.jokes.length;
+      const line = state.jokes[state.promptIndex];
+      textEditor.value = line;
+      bubbleText.textContent = line;
+      setStatus('Prompt shuffled.');
+    });
+
+    btnSwap.addEventListener('click', () => {
+      const sx = state.slippy.x;
+      state.slippy.x = clamp(state.bubble.x - 300, 0, window.innerWidth - slippy.offsetWidth);
+      state.bubble.x = clamp(sx + 210, 0, window.innerWidth - bubble.offsetWidth);
+      placeAll();
+      updateTracking();
+      setStatus('Swapped sides.');
+    });
+
+    btnReset.addEventListener('click', () => {
+      state.slippy.x = state.defaults.slippy.x;
+      state.slippy.y = state.defaults.slippy.y;
+      state.bubble.x = state.defaults.bubble.x;
+      state.bubble.y = state.defaults.bubble.y;
+      state.panel.x = state.defaults.panel.x;
+      state.panel.y = state.defaults.panel.y;
+      thoughtToggle.checked = false;
+      state.thought = false;
+      bubbleSkin.src = 'assets/bubble_speech.svg';
+      eyeStrength.value = '6.5';
+      state.eyeReach = 6.5;
+      eyeValue.textContent = '6.5';
+      fitToViewport();
+      setStatus('Layout reset.');
+    });
+
+    bubbleActionA.addEventListener('click', () => {
+      state.promptIndex = (state.promptIndex + 1) % state.jokes.length;
+      const line = state.jokes[state.promptIndex];
+      textEditor.value = line;
+      bubbleText.textContent = line;
+      setStatus('Slippy told a joke.');
+    });
+
+    bubbleActionB.addEventListener('click', () => {
+      const next = clamp(Number(eyeStrength.value) + 1.2, 2, 11);
+      eyeStrength.value = String(next);
+      state.eyeReach = next;
+      updateTracking();
+      setStatus('Pointing intensity increased.');
+    });
+
+    makeDraggable(slippy, 'slippy');
+    makeDraggable(bubble, 'bubble');
+    makeDraggable(panel, 'panel', panelHead);
+
+    window.addEventListener('resize', fitToViewport);
+
+    placeAll();
+    bubbleText.textContent = textEditor.value;
+    eyeValue.textContent = Number(eyeStrength.value).toFixed(1);
+    fitToViewport();
+  </script>
+</body>
+</html>

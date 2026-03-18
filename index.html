@@ -1,0 +1,4912 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bridgehand - Embodied Browser Agent Lab</title>
+  <style>
+    :root {
+      --bg: #f6fbff;
+      --ink: #122033;
+      --line: #d5dfeb;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-shadow: 0 16px 40px rgba(44, 72, 102, 0.18);
+      --accent: #2d7ff9;
+      --accent-soft: #e7f1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(135, 206, 250, 0.26), transparent 30%),
+        radial-gradient(circle at 82% 84%, rgba(186, 230, 253, 0.34), transparent 28%),
+        linear-gradient(180deg, #fafdff 0%, var(--bg) 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    #stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #siteScroll {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      z-index: 0;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.88), rgba(246, 251, 255, 0.34) 36%, rgba(226, 238, 250, 0.12) 64%, transparent 100%),
+        linear-gradient(180deg, #eef5fb 0%, #f8fbff 20%, #edf4fa 100%);
+      scrollbar-gutter: stable;
+    }
+
+    #siteCanvas {
+      min-height: 2280px;
+      padding: 28px 28px 120px;
+      color: #17304b;
+    }
+
+    .siteShell {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      gap: 36px;
+    }
+
+    .siteHero,
+    .siteSection {
+      position: relative;
+      border: 1px solid rgba(177, 196, 215, 0.75);
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 24px 56px rgba(33, 69, 102, 0.12);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .siteHero {
+      padding: 42px 42px 46px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 28px;
+      min-height: 560px;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(132, 204, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 80% 16%, rgba(125, 211, 252, 0.22), transparent 30%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 252, 0.82));
+    }
+
+    .heroCopy {
+      display: grid;
+      align-content: start;
+      gap: 18px;
+      max-width: 620px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(220, 236, 252, 0.84);
+      color: #21527d;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .heroTitle {
+      margin: 0;
+      font-size: clamp(42px, 6vw, 76px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: #10263c;
+    }
+
+    .heroBody {
+      margin: 0;
+      max-width: 560px;
+      font-size: 18px;
+      line-height: 1.65;
+      color: #425d76;
+    }
+
+    .heroActions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 6px;
+    }
+
+    .heroPrimary,
+    .heroGhost {
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .heroPrimary {
+      background: linear-gradient(180deg, #14334e, #204d78);
+      color: #fff;
+      border-color: #15324b;
+    }
+
+    .heroGhost {
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .heroDeck {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+      justify-items: stretch;
+    }
+
+    .siteGrid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 20px;
+      padding: 36px;
+    }
+
+    .siteCard {
+      border: 1px solid rgba(187, 204, 220, 0.8);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 249, 252, 0.88));
+      padding: 22px;
+      box-shadow: 0 14px 28px rgba(21, 51, 78, 0.08);
+    }
+
+    .siteCard h2,
+    .siteCard h3,
+    .siteCard h4,
+    .siteCard p {
+      margin: 0;
+    }
+
+    .siteCard p {
+      color: #587289;
+      line-height: 1.55;
+    }
+
+    .siteCard.heroMetric {
+      display: grid;
+      gap: 12px;
+      min-height: 218px;
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 246, 252, 0.92));
+    }
+
+    .metricValue {
+      font-size: 54px;
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+      color: #0f2740;
+      font-weight: 800;
+    }
+
+    .siteRibbon {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(224, 239, 250, 0.88);
+      color: #2b587b;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .miniStatRow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .miniStat {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(236, 244, 250, 0.8);
+      border: 1px solid rgba(191, 206, 220, 0.75);
+    }
+
+    .miniStat strong {
+      display: block;
+      font-size: 26px;
+      line-height: 1;
+      color: #163652;
+      margin-bottom: 6px;
+    }
+
+    .miniStat span {
+      font-size: 12px;
+      color: #61809a;
+    }
+
+    .tourTarget {
+      position: relative;
+      outline: 2px solid rgba(45, 127, 249, 0.18);
+      outline-offset: 6px;
+      scroll-margin-top: 84px;
+    }
+
+    .tourTarget::after {
+      content: "Tour Stop";
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(20, 72, 128, 0.1);
+      color: #1f5480;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .flowList {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .flowItem {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(239, 246, 251, 0.86);
+      border: 1px solid rgba(189, 205, 221, 0.78);
+    }
+
+    .flowDot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #2d7ff9;
+      box-shadow: 0 0 0 6px rgba(45, 127, 249, 0.12);
+    }
+
+    .flowMeta {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #648099;
+    }
+
+    .scorePill {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #0f2740;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .launchRail {
+      display: grid;
+      gap: 16px;
+      padding: 28px;
+      min-height: 260px;
+      background:
+        linear-gradient(160deg, rgba(19, 58, 91, 0.95), rgba(26, 86, 125, 0.92)),
+        radial-gradient(circle at top right, rgba(125, 211, 252, 0.28), transparent 35%);
+      color: #eff6ff;
+    }
+
+    .launchRail p,
+    .launchRail h3,
+    .launchRail h4 {
+      color: inherit;
+    }
+
+    .launchTimeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .launchRow {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(186, 230, 253, 0.16);
+    }
+
+    .launchRow strong {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #cce8ff;
+    }
+
+    .launchBadge {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .drag-shell {
+      position: absolute;
+      touch-action: none;
+    }
+
+    .drag-handle {
+      cursor: grab;
+    }
+
+    .dragging .drag-handle,
+    .dragging .drag-shell {
+      cursor: grabbing;
+    }
+
+    #slippy {
+      --slippy-scale: 1;
+      width: 263px;
+      height: 519px;
+      z-index: 10;
+      will-change: left, top;
+    }
+
+    #slippyHitbox {
+      position: absolute;
+      pointer-events: none;
+      z-index: 9;
+      border: 2px dashed rgba(73, 184, 255, 0.86);
+      border-radius: 42px;
+      background:
+        linear-gradient(180deg, rgba(129, 214, 255, 0.16), rgba(60, 163, 237, 0.1)),
+        radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.24), transparent 38%);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.34) inset,
+        0 0 18px rgba(74, 191, 255, 0.24),
+        0 10px 24px rgba(28, 78, 120, 0.14);
+      backdrop-filter: blur(2px);
+    }
+
+    #slippyCapsule,
+    #overlayFrameBounds,
+    #overlayArrowBounds {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+    }
+
+    #slippyCapsule {
+      z-index: 8;
+      border: 2px dashed rgba(142, 114, 255, 0.9);
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(169, 136, 255, 0.12), rgba(111, 94, 224, 0.08)),
+        radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.2), transparent 40%);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.26) inset,
+        0 0 16px rgba(128, 96, 255, 0.18),
+        0 10px 24px rgba(66, 44, 128, 0.12);
+    }
+
+    #overlayFrameBounds {
+      z-index: 15;
+      border: 2px dashed rgba(255, 166, 112, 0.94);
+      background: rgba(255, 167, 112, 0.08);
+      box-shadow:
+        0 0 0 1px rgba(255, 244, 236, 0.26) inset,
+        0 0 16px rgba(255, 160, 98, 0.18);
+    }
+
+    #overlayArrowBounds {
+      z-index: 15;
+      border: 2px dashed rgba(255, 214, 102, 0.94);
+      background: rgba(255, 214, 102, 0.12);
+      box-shadow:
+        0 0 0 1px rgba(255, 250, 231, 0.24) inset,
+        0 0 16px rgba(255, 196, 64, 0.18);
+    }
+
+    #slippy::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: calc(18px * var(--slippy-scale));
+      width: calc(172px * var(--slippy-scale));
+      height: calc(44px * var(--slippy-scale));
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(ellipse at center, rgba(24, 44, 68, 0.34) 0%, rgba(24, 44, 68, 0.18) 46%, rgba(24, 44, 68, 0) 74%);
+      filter: blur(10px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #slippyDragHotspot {
+      position: absolute;
+      inset:
+        calc(24px * var(--slippy-scale))
+        calc(16px * var(--slippy-scale))
+        calc(12px * var(--slippy-scale));
+      border-radius: calc(42px * var(--slippy-scale));
+      background: transparent;
+      z-index: 7;
+    }
+
+    #slippyScene {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 263px;
+      height: 519px;
+      transform-origin: 0 0;
+      will-change: transform;
+      filter:
+        drop-shadow(0 12px 22px rgba(17, 31, 47, 0.16))
+        drop-shadow(0 26px 44px rgba(17, 31, 47, 0.12));
+    }
+
+    #slippyBase {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+      -webkit-user-drag: none;
+      image-rendering: auto;
+    }
+
+    #pointerRig,
+    #eyesSvg {
+      position: absolute;
+      inset: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    #pointerRig {
+      z-index: 1;
+    }
+
+    #eyesSvg {
+      z-index: 5;
+    }
+
+    .arm-segment {
+      position: absolute;
+      will-change: transform;
+      -webkit-user-drag: none;
+      image-rendering: auto;
+    }
+
+    #upperArm {
+      left: 82px;
+      top: 258px;
+      width: 51px;
+      height: 20px;
+      transform-origin: 4px 10px;
+      z-index: 8;
+    }
+
+    #forearm {
+      left: 36px;
+      top: 246px;
+      width: 111px;
+      height: 57px;
+      transform-origin: 102px 12px;
+      z-index: 9;
+    }
+
+    #bee {
+      position: absolute;
+      width: 64px;
+      height: 44px;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 50;
+      will-change: transform, left, top;
+      filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.18));
+    }
+
+    #bee.bee-fleeing {
+      filter: drop-shadow(0 10px 12px rgba(15, 23, 42, 0.24));
+    }
+
+    .bee-wing {
+      fill: rgba(255, 255, 255, 0.82);
+      stroke: rgba(100, 116, 139, 0.55);
+      stroke-width: 1.1;
+      transform-box: fill-box;
+      transform-origin: center bottom;
+      animation: beeWingFlap 120ms ease-in-out infinite alternate;
+    }
+
+    .bee-wing-right {
+      animation-delay: -60ms;
+    }
+
+    .bee-body {
+      fill: #facc15;
+      stroke: #111827;
+      stroke-width: 1.5;
+    }
+
+    .bee-head {
+      fill: #f59e0b;
+      stroke: #111827;
+      stroke-width: 1.5;
+    }
+
+    .bee-stripe {
+      stroke: #111827;
+      stroke-width: 4.4;
+      stroke-linecap: round;
+    }
+
+    .bee-eye {
+      fill: #ffffff;
+      stroke: #111827;
+      stroke-width: 1;
+    }
+
+    .bee-pupil {
+      fill: #111827;
+    }
+
+    .bee-blush {
+      fill: rgba(251, 113, 133, 0.4);
+    }
+
+    .bee-stinger {
+      fill: #111827;
+    }
+
+    .bee-antenna {
+      fill: none;
+      stroke: #111827;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+    }
+
+    @keyframes beeWingFlap {
+      from {
+        transform: rotate(-18deg) translateY(0);
+      }
+
+      to {
+        transform: rotate(20deg) translateY(-1px);
+      }
+    }
+
+    #bubble {
+      --bubble-scale: 1;
+      position: absolute;
+      width: 420px;
+      height: 258px;
+      z-index: 24;
+      touch-action: none;
+      cursor: grab;
+      will-change: left, top;
+      filter:
+        drop-shadow(0 10px 20px rgba(18, 34, 52, 0.1))
+        drop-shadow(0 18px 32px rgba(18, 34, 52, 0.14));
+    }
+
+    #bubble::after {
+      content: "";
+      position: absolute;
+      inset:
+        calc(28px * var(--bubble-scale))
+        calc(32px * var(--bubble-scale))
+        calc(30px * var(--bubble-scale));
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 55%, rgba(17, 31, 47, 0.16) 0%, rgba(17, 31, 47, 0.1) 32%, rgba(17, 31, 47, 0) 72%);
+      filter: blur(14px);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    #bubbleContent {
+      position: absolute;
+      inset:
+        calc(26px * var(--bubble-scale))
+        calc(30px * var(--bubble-scale))
+        calc(78px * var(--bubble-scale));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: calc(24px * var(--bubble-scale));
+      line-height: 1.28;
+      letter-spacing: 0.01em;
+      pointer-events: none;
+      z-index: 1;
+      text-wrap: balance;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .bubbleCopy {
+      width: 100%;
+      display: grid;
+      gap: calc(12px * var(--bubble-scale));
+      align-content: center;
+      justify-items: center;
+    }
+
+    .bubbleCopy p {
+      margin: 0;
+    }
+
+    .bubbleCopy strong {
+      font-size: calc(13px * var(--bubble-scale));
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5d7591;
+    }
+
+    .bubbleAction {
+      position: absolute;
+      z-index: 3;
+      min-width: calc(122px * var(--bubble-scale));
+      border-radius: calc(999px * var(--bubble-scale));
+      border-style: solid;
+      border-width: calc(2px * var(--bubble-scale));
+      border-color: rgba(15, 30, 46, 0.88);
+      background:
+        radial-gradient(circle at 20% 22%, rgba(255, 255, 255, 0.72), transparent 30%),
+        linear-gradient(180deg, #fdf5d9, #e9f2fb);
+      color: #11283f;
+      padding:
+        calc(10px * var(--bubble-scale))
+        calc(19px * var(--bubble-scale));
+      font-family: "Architects Daughter", "Comic Neue", "Marker Felt", "Chalkboard SE", cursive;
+      font-size: calc(12px * var(--bubble-scale));
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transform: translateX(var(--bubble-action-shift-x, 0));
+      box-shadow:
+        0 0 0 3px rgba(255, 253, 245, 0.82),
+        0 10px 22px rgba(20, 48, 75, 0.18);
+    }
+
+    .bubbleAction.primary {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(220, 245, 255, 0.28), transparent 28%),
+        linear-gradient(180deg, #1b4568, #2f6b97);
+      border-color: rgba(10, 24, 38, 0.9);
+      color: #fffdf4;
+    }
+
+    .bubbleAction:hover {
+      background:
+        radial-gradient(circle at 20% 22%, rgba(255, 255, 255, 0.8), transparent 32%),
+        linear-gradient(180deg, #fff9e8, #edf5fd);
+    }
+
+    .bubbleAction.primary:hover {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(220, 245, 255, 0.32), transparent 30%),
+        linear-gradient(180deg, #235179, #3978a8);
+    }
+
+    .bubbleAction:active {
+      transform: translateX(var(--bubble-action-shift-x, 0)) translateY(0);
+      box-shadow:
+        0 0 0 3px rgba(255, 255, 255, 0.78),
+        0 6px 16px rgba(20, 48, 75, 0.16);
+    }
+
+    #controlPanel {
+      width: 260px;
+      border: 1px solid rgba(174, 190, 209, 0.95);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--panel-shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      z-index: 40;
+    }
+
+    #controlPanel.panel-minimized #panelBody {
+      display: none;
+    }
+
+    #controlPanel.panel-minimized #panelBar {
+      border-bottom: 0;
+    }
+
+    #panelBar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, #ffffff, #eef5fc);
+      border-bottom: 1px solid rgba(213, 223, 235, 0.95);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: grab;
+      user-select: none;
+    }
+
+    #panelGrip {
+      width: 32px;
+      height: 12px;
+      border-radius: 999px;
+      background: repeating-linear-gradient(90deg, #b5c8dd 0 4px, transparent 4px 7px);
+      opacity: 0.85;
+      transition: transform 160ms ease;
+    }
+
+    #controlPanel:not(.panel-minimized) #panelGrip {
+      transform: rotate(90deg);
+    }
+
+    #panelBody {
+      display: grid;
+      gap: 12px;
+      padding: 14px 14px 16px;
+    }
+
+    .control {
+      display: grid;
+      gap: 6px;
+    }
+
+    .toggleList {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(205, 217, 231, 0.96);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(242, 247, 252, 0.96));
+    }
+
+    .toggleItem {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      font-size: 12px;
+      color: #42566d;
+    }
+
+    .toggleItem input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .control label,
+    .rowLabel {
+      font-size: 12px;
+      font-weight: 700;
+      color: #42566d;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      border: 1px solid #cfd9e6;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px 12px;
+      color: var(--ink);
+      outline: none;
+      box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.04);
+    }
+
+    input[type="text"]:focus,
+    select:focus,
+    input[type="range"]:focus {
+      border-color: #88b8ff;
+      box-shadow: 0 0 0 3px rgba(45, 127, 249, 0.14);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      margin: 0;
+    }
+
+    .rangeRow {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .rangeValue {
+      min-width: 36px;
+      text-align: right;
+      font-size: 12px;
+      color: #55708b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .buttonRow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      border: 1px solid #c8d6e6;
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      cursor: pointer;
+      box-shadow: 0 2px 0 rgba(15, 23, 42, 0.06);
+    }
+
+    button:hover {
+      background: #f7fbff;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+    }
+
+    #presetBtn {
+      background: var(--accent-soft);
+      border-color: #a7cbff;
+    }
+
+    #copyCodexAttachBtn {
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.22), transparent 28%),
+        linear-gradient(180deg, #224d72, #2f6d97);
+      border-color: rgba(14, 34, 50, 0.9);
+      color: #f8fbff;
+    }
+
+    #copyCodexAttachBtn:hover {
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.26), transparent 30%),
+        linear-gradient(180deg, #29577f, #3879a8);
+    }
+
+    .debugMeta {
+      font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 11px;
+      letter-spacing: 0.01em;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #60758c;
+    }
+
+    @media (max-width: 900px) {
+      #bubble {
+        width: 340px;
+        height: 222px;
+      }
+
+      #bubbleContent {
+        font-size: calc(23px * var(--bubble-scale));
+        inset:
+          calc(24px * var(--bubble-scale))
+          calc(24px * var(--bubble-scale))
+          calc(68px * var(--bubble-scale));
+      }
+
+      #controlPanel {
+        width: 232px;
+      }
+
+      .siteHero {
+        grid-template-columns: 1fr;
+      }
+
+      .siteGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .heroDeck {
+        order: -1;
+      }
+
+      .launchRow,
+      .flowItem {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #stageBubbleSvg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 18;
+      filter:
+        drop-shadow(0 14px 24px rgba(18, 34, 52, 0.12))
+        drop-shadow(0 24px 40px rgba(18, 34, 52, 0.1));
+    }
+
+    #tourOverlayLayer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 16;
+    }
+
+    #tourTargetFrame {
+      position: absolute;
+      display: none;
+      border: 0;
+      background: transparent;
+      box-shadow:
+        0 0 0 5px rgba(136, 226, 255, 0.92),
+        0 12px 18px rgba(38, 88, 126, 0.18),
+        0 0 24px rgba(107, 214, 255, 0.46),
+        0 0 58px rgba(77, 193, 255, 0.28);
+    }
+
+    #tourTargetArrow {
+      position: absolute;
+      display: none;
+      width: 96px;
+      height: 52px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      appearance: none;
+      pointer-events: auto;
+      cursor: pointer;
+      transform: translateX(-50%);
+      filter:
+        drop-shadow(0 10px 16px rgba(38, 88, 126, 0.2))
+        drop-shadow(0 0 16px rgba(100, 212, 255, 0.5))
+        drop-shadow(0 0 30px rgba(92, 200, 255, 0.34));
+    }
+
+    #tourTargetArrow:focus-visible {
+      outline: 3px solid rgba(132, 221, 255, 0.96);
+      outline-offset: 6px;
+      border-radius: 18px;
+    }
+
+    #tourTargetArrow svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    #tourTargetArrow path {
+      fill: none;
+      stroke: rgba(132, 221, 255, 0.96);
+      stroke-width: 6.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    #tourTargetArrow.arrow-up {
+      top: 16px;
+      animation: tourArrowBounceUp 1.8s ease-in-out infinite;
+    }
+
+    #tourTargetArrow.arrow-down {
+      bottom: 16px;
+      animation: tourArrowBounceDown 1.8s ease-in-out infinite;
+    }
+
+    #tourTargetArrow.arrow-down svg {
+      transform: rotate(180deg);
+    }
+
+    @keyframes tourArrowBounceUp {
+      0%, 100% {
+        transform: translateX(-50%) translateY(0);
+      }
+
+      50% {
+        transform: translateX(-50%) translateY(-7px);
+      }
+    }
+
+    @keyframes tourArrowBounceDown {
+      0%, 100% {
+        transform: translateX(-50%) translateY(0);
+      }
+
+      50% {
+        transform: translateX(-50%) translateY(7px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="siteScroll">
+      <div id="siteCanvas">
+        <div class="siteShell">
+          <section class="siteHero">
+            <div class="heroCopy">
+              <span class="eyebrow">Guided Product Tour</span>
+              <h1 class="heroTitle">Operator launchboards built for fast-moving teams.</h1>
+              <p class="heroBody">This fake product surface is here so Slippy can actually guide something on-screen. Scroll the page, follow the tour stops, and watch him keep tracking the active interface object while the scene moves behind him.</p>
+              <div class="heroActions">
+                <button class="heroPrimary" type="button">Review rollout</button>
+                <button class="heroGhost" type="button">Share summary</button>
+              </div>
+              <div class="miniStatRow">
+                <div class="miniStat">
+                  <strong>14m</strong>
+                  <span>Median prep time saved per launch</span>
+                </div>
+                <div class="miniStat">
+                  <strong>22%</strong>
+                  <span>Faster review pass-through</span>
+                </div>
+                <div class="miniStat">
+                  <strong>98%</strong>
+                  <span>Tasks cleared before ship window</span>
+                </div>
+              </div>
+            </div>
+            <div class="heroDeck">
+              <article id="tourTargetHero" class="siteCard heroMetric tourTarget">
+                <span class="siteRibbon">Live overview</span>
+                <h3>Conversion lift monitor</h3>
+                <div class="metricValue">+18.4%</div>
+                <p>Variant B is leading across the current release candidate and the highest-confidence segment is already marked ready.</p>
+                <div class="miniStatRow">
+                  <div class="miniStat">
+                    <strong>71%</strong>
+                    <span>Qualified traffic</span>
+                  </div>
+                  <div class="miniStat">
+                    <strong>4.9</strong>
+                    <span>Avg. confidence score</span>
+                  </div>
+                  <div class="miniStat">
+                    <strong>3</strong>
+                    <span>Launch blockers left</span>
+                  </div>
+                </div>
+              </article>
+              <article class="siteCard">
+                <span class="siteRibbon">Team pulse</span>
+                <h3>Operator notes</h3>
+                <p style="margin-top:12px;">Thursday launch readout is cleared for legal, design, and support. Two pricing screenshots still need final signoff before the asset kit is frozen.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="siteSection">
+            <div class="siteGrid">
+              <article id="tourTargetQueue" class="siteCard tourTarget" style="grid-column: span 7;">
+                <span class="siteRibbon">Review queue</span>
+                <h3 style="margin-top:14px;">What still needs attention before launch</h3>
+                <p style="margin-top:10px;">Each row here is a concrete operator task with a handoff owner, current status, and confidence score. This is the tour stop Slippy should move to after the first overview card.</p>
+                <div class="flowList">
+                  <div class="flowItem">
+                    <span class="flowDot"></span>
+                    <div>
+                      <div class="flowMeta">Pricing QA</div>
+                      <p>Reconfirm annual-plan price chips on mobile checkout before 4:00 PM.</p>
+                    </div>
+                    <span class="scorePill">91%</span>
+                  </div>
+                  <div class="flowItem">
+                    <span class="flowDot"></span>
+                    <div>
+                      <div class="flowMeta">Support prep</div>
+                      <p>Approve customer-facing macro set for launch-day triage responses.</p>
+                    </div>
+                    <span class="scorePill">88%</span>
+                  </div>
+                  <div class="flowItem">
+                    <span class="flowDot"></span>
+                    <div>
+                      <div class="flowMeta">Analytics patch</div>
+                      <p>Verify event rename on the confirmation page before the rollout flag opens.</p>
+                    </div>
+                    <span class="scorePill">95%</span>
+                  </div>
+                </div>
+              </article>
+              <article class="siteCard" style="grid-column: span 5;">
+                <span class="siteRibbon">Operator stack</span>
+                <h3 style="margin-top:14px;">Release workspace</h3>
+                <p style="margin-top:10px;">Runbooks, approval notes, rollout timing, and support readiness all live here so the page feels like an actual tool surface instead of a blank backdrop.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="siteSection">
+            <div class="siteGrid">
+              <article class="siteCard" style="grid-column: span 5;">
+                <span class="siteRibbon">Signals</span>
+                <h3 style="margin-top:14px;">Traffic and readiness snapshots</h3>
+                <p style="margin-top:10px;">The page keeps enough texture that the tour targets feel grounded. Scroll position matters, and the active object should keep updating under Slippy’s tracking logic.</p>
+              </article>
+              <article id="tourTargetLaunch" class="launchRail tourTarget" style="grid-column: span 7;">
+                <span class="siteRibbon" style="background:rgba(255,255,255,0.14); color:#dff2ff;">Launch rail</span>
+                <h3>Rollout milestones</h3>
+                <p>The final stop is the launch rail. It is visually distinct and lower in the document so scrolling has a visible impact on Slippy’s tracking.</p>
+                <div class="launchTimeline">
+                  <div class="launchRow">
+                    <strong>09:00</strong>
+                    <div>
+                      <h4>Support warm-up</h4>
+                      <p>Macros, escalation paths, and fallback routing confirmed.</p>
+                    </div>
+                    <span class="launchBadge">Ready</span>
+                  </div>
+                  <div class="launchRow">
+                    <strong>10:30</strong>
+                    <div>
+                      <h4>Gradual flag lift</h4>
+                      <p>Exposure increases from 10% to 35% once conversion quality holds.</p>
+                    </div>
+                    <span class="launchBadge">Watching</span>
+                  </div>
+                  <div class="launchRow">
+                    <strong>12:00</strong>
+                    <div>
+                      <h4>Board review</h4>
+                      <p>Stakeholders approve the final go/no-go after live metrics settle.</p>
+                    </div>
+                    <span class="launchBadge">Pending</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="slippyHitbox" aria-hidden="true"></div>
+    <div id="slippyCapsule" aria-hidden="true"></div>
+
+    <svg id="stageBubbleSvg" aria-hidden="true">
+      <defs>
+        <filter id="tailShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="4.8" result="blur"></feGaussianBlur>
+          <feOffset in="blur" dx="0" dy="8" result="offsetBlur"></feOffset>
+          <feFlood flood-color="#0f172a" flood-opacity="0.18" result="shadowColor"></feFlood>
+          <feComposite in="shadowColor" in2="offsetBlur" operator="in" result="shadow"></feComposite>
+          <feGaussianBlur in="shadow" stdDeviation="1.2" result="shadowSoft"></feGaussianBlur>
+          <feMerge>
+            <feMergeNode in="shadowSoft"></feMergeNode>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+          </feMerge>
+        </filter>
+      </defs>
+      <g id="sightlineInk"></g>
+      <g id="tailInk"></g>
+    </svg>
+
+    <div id="tourOverlayLayer">
+      <div id="overlayFrameBounds" aria-hidden="true"></div>
+      <div id="overlayArrowBounds" aria-hidden="true"></div>
+      <div id="tourTargetFrame" aria-hidden="true"></div>
+      <button id="tourTargetArrow" type="button" aria-label="Scroll to current tour target">
+        <svg viewBox="0 0 96 52" aria-hidden="true" focusable="false">
+          <path d="M48 44 C48 29 48 18 48 10 M48 10 Q40 18 27 25 M48 10 Q56 18 69 25"></path>
+        </svg>
+      </button>
+    </div>
+
+    <svg id="bee" viewBox="0 0 64 44" aria-hidden="true">
+      <ellipse class="bee-wing bee-wing-left" cx="25" cy="11.5" rx="10.5" ry="7"></ellipse>
+      <ellipse class="bee-wing bee-wing-right" cx="40" cy="11.5" rx="10.5" ry="7"></ellipse>
+      <line class="bee-antenna" x1="15" y1="17" x2="10" y2="9"></line>
+      <line class="bee-antenna" x1="21" y1="16" x2="21" y2="7"></line>
+      <circle class="bee-head" cx="18" cy="23" r="8"></circle>
+      <ellipse class="bee-body" cx="36" cy="24" rx="17" ry="11.5"></ellipse>
+      <line class="bee-stripe" x1="29" y1="16" x2="29" y2="32"></line>
+      <line class="bee-stripe" x1="36" y1="14.5" x2="36" y2="33.5"></line>
+      <line class="bee-stripe" x1="43" y1="16" x2="43" y2="32"></line>
+      <ellipse class="bee-eye" cx="15" cy="21" rx="2.2" ry="2.7"></ellipse>
+      <ellipse class="bee-eye" cx="20.5" cy="21" rx="2.2" ry="2.7"></ellipse>
+      <circle class="bee-pupil" cx="15.5" cy="21.2" r="1"></circle>
+      <circle class="bee-pupil" cx="21" cy="21.2" r="1"></circle>
+      <ellipse class="bee-blush" cx="15" cy="26" rx="1.8" ry="1.1"></ellipse>
+      <ellipse class="bee-blush" cx="21" cy="26" rx="1.8" ry="1.1"></ellipse>
+      <polygon class="bee-stinger" points="54,24 61,21 61,27"></polygon>
+    </svg>
+
+    <div id="bubble">
+      <div id="bubbleContent"></div>
+    </div>
+
+    <div id="slippy" class="drag-shell">
+      <div id="slippyDragHotspot" class="drag-handle" aria-label="Drag Slippy"></div>
+      <div id="slippyScene">
+        <img id="slippyBase" src="assets/slippy_show.png" alt="Slippy" />
+        <div id="pointerRig" aria-hidden="true">
+          <img id="upperArm" class="arm-segment" src="assets/slippy_upperarm.png" alt="" />
+          <img id="forearm" class="arm-segment" src="assets/slippy_forearm.png" alt="" />
+        </div>
+        <svg id="eyesSvg" viewBox="0 0 263 519" aria-hidden="true"></svg>
+      </div>
+    </div>
+
+    <div id="controlPanel" class="drag-shell panel-minimized">
+      <div id="panelBar" class="drag-handle" aria-label="Drag controls">
+        <span>Slippy Controls</span>
+        <span id="panelGrip" aria-hidden="true"></span>
+      </div>
+      <div id="panelBody">
+        <div class="control">
+          <label for="bubbleTextInput">Current stop</label>
+          <input id="bubbleTextInput" type="text" maxlength="64" spellcheck="false" readonly value="Overview card" />
+        </div>
+
+        <div class="control">
+          <label for="modeSelect">Bubble mode</label>
+          <select id="modeSelect" disabled>
+            <option value="speech">Speech</option>
+            <option value="thought">Thought</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <div class="rangeRow">
+            <span class="rowLabel">Eye intensity</span>
+            <span id="eyeValue" class="rangeValue">1.0x</span>
+          </div>
+          <input id="eyeIntensity" type="range" min="0.4" max="1.8" step="0.05" value="1" />
+        </div>
+
+        <div class="buttonRow">
+          <button id="resetBtn" type="button">Reset layout</button>
+          <button id="presetBtn" type="button">Restart tour</button>
+        </div>
+
+        <div class="control">
+          <span class="rowLabel">Boundary overlays</span>
+          <div class="toggleList">
+            <label class="toggleItem">
+              <input id="toggleSlippyHitbox" type="checkbox" />
+              <span>Slippy hitbox rect</span>
+            </label>
+            <label class="toggleItem">
+              <input id="toggleSlippyCapsule" type="checkbox" />
+              <span>Slippy capsule hitbox</span>
+            </label>
+            <label class="toggleItem">
+              <input id="toggleSightline" type="checkbox" />
+              <span>Eye-to-target sightline</span>
+            </label>
+            <label class="toggleItem">
+              <input id="toggleSightlineCorridor" type="checkbox" />
+              <span>Sightline corridor overlay</span>
+            </label>
+            <label class="toggleItem">
+              <input id="toggleOverlayFramePad" type="checkbox" />
+              <span>Target frame padding</span>
+            </label>
+            <label class="toggleItem">
+              <input id="toggleOverlayArrowPad" type="checkbox" />
+              <span>Target arrow padding</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="codexDebugId">Codex live-debug id</label>
+          <input id="codexDebugId" class="debugMeta" type="text" spellcheck="false" readonly value="" />
+        </div>
+
+        <div class="control">
+          <button id="copyCodexAttachBtn" type="button">Copy Codex Live-Debug Hook</button>
+        </div>
+
+        <p id="eyeRigReadout" class="hint"></p>
+        <p id="codexDebugStatus" class="hint">Click the Codex button to stamp this tab with a unique id and copy CDP attach instructions.</p>
+        <p class="hint">Drag Slippy, drag the bubble, or drag the panel from its title bar. Click the title bar to open or collapse the controls. Scroll the fake site behind him and the overlay stays locked to the active object.</p>
+        <p class="hint">Keyboard: press <kbd>1</kbd> for left eye, <kbd>2</kbd> for right eye, or <kbd>3</kbd> for forearm. Arrow keys move the selected target. Hold <kbd>Shift</kbd> with an eye selected to resize that eye's whites.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      window.__slippyDemoErrors = [];
+      window.addEventListener('error', (event) => {
+        window.__slippyDemoErrors.push(String(event.message || event.error || 'error'));
+        document.documentElement.dataset.demoErrors = String(window.__slippyDemoErrors.length);
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        window.__slippyDemoErrors.push(String((event.reason && event.reason.message) || event.reason || 'rejection'));
+        document.documentElement.dataset.demoErrors = String(window.__slippyDemoErrors.length);
+      });
+
+      const stage = document.getElementById('stage');
+      const siteScroll = document.getElementById('siteScroll');
+      const bubble = document.getElementById('bubble');
+      const bubbleContent = document.getElementById('bubbleContent');
+      const sightlineInk = document.getElementById('sightlineInk');
+      const tailInk = document.getElementById('tailInk');
+      const stageBubbleSvg = document.getElementById('stageBubbleSvg');
+      const slippyHitbox = document.getElementById('slippyHitbox');
+      const slippyCapsule = document.getElementById('slippyCapsule');
+      const tourTargetFrame = document.getElementById('tourTargetFrame');
+      const tourTargetArrow = document.getElementById('tourTargetArrow');
+      const overlayFrameBounds = document.getElementById('overlayFrameBounds');
+      const overlayArrowBounds = document.getElementById('overlayArrowBounds');
+      const bee = document.getElementById('bee');
+      const slippy = document.getElementById('slippy');
+      const slippyScene = document.getElementById('slippyScene');
+      const slippyBase = document.getElementById('slippyBase');
+      const pointerRig = document.getElementById('pointerRig');
+      const upperArm = document.getElementById('upperArm');
+      const forearm = document.getElementById('forearm');
+      const eyesSvg = document.getElementById('eyesSvg');
+      const controlPanel = document.getElementById('controlPanel');
+      const panelBar = document.getElementById('panelBar');
+      const bubbleTextInput = document.getElementById('bubbleTextInput');
+      const modeSelect = document.getElementById('modeSelect');
+      const eyeIntensity = document.getElementById('eyeIntensity');
+      const eyeValue = document.getElementById('eyeValue');
+      const resetBtn = document.getElementById('resetBtn');
+      const presetBtn = document.getElementById('presetBtn');
+      const toggleSlippyHitbox = document.getElementById('toggleSlippyHitbox');
+      const toggleSlippyCapsule = document.getElementById('toggleSlippyCapsule');
+      const toggleSightline = document.getElementById('toggleSightline');
+      const toggleSightlineCorridor = document.getElementById('toggleSightlineCorridor');
+      const toggleOverlayFramePad = document.getElementById('toggleOverlayFramePad');
+      const toggleOverlayArrowPad = document.getElementById('toggleOverlayArrowPad');
+      const codexDebugId = document.getElementById('codexDebugId');
+      const copyCodexAttachBtn = document.getElementById('copyCodexAttachBtn');
+      const eyeRigReadout = document.getElementById('eyeRigReadout');
+      const codexDebugStatus = document.getElementById('codexDebugStatus');
+      const eyeNodes = {};
+
+      const assets = {
+        pointer: 'assets/slippy_show.png',
+        stressed: 'assets/slippy_stressed.png',
+        confirm: 'assets/slippy_confirm.png',
+        thumbs: 'assets/slippy_thumbsup.png'
+      };
+      const BEE_ALERT_RADIUS_PX = 150;
+      const BEE_DISENGAGE_RADIUS_PX = 178;
+      const BEE_POST_SHOO_STRESS_MS = 1500;
+      const BEE_SHOO_TRIGGER_HOLD_MS = 320;
+      const beeBumbleSpeedScale = 0.85;
+      const pupilScaleX = (7.7 / 17) * 0.8;
+      const pupilScaleY = 6.6 / 18.8;
+      const SCRIPTED_MOVE_DURATION_MS = 320;
+      const BUBBLE_RETURN_DURATION_MS = 420;
+      const INVALID_DROP_DELAY_MS = 1200;
+      const BUBBLE_FOLLOW_TAU_MS = 330;
+      const ATTENTION_LINE_PAD_PX = 10;
+      const OVERLAY_PAD_PX = 8;
+      const OVERLAY_GLOW_PAD_PX = 22;
+      const LAYOUT_VIEWPORT_MARGIN_PX = 8;
+      const BUBBLE_SIDE_GAP_PX = 54;
+      const CODEX_DEBUG_PORT = 9333;
+      const TOUR_STEPS = Object.freeze([
+        {
+          id: 'overview',
+          title: 'Overview card',
+          targetId: 'tourTargetHero',
+          text: 'This overview card is where the launch team sees which variant is winning before the rollout expands.'
+        },
+        {
+          id: 'review_queue',
+          title: 'Review queue',
+          targetId: 'tourTargetQueue',
+          text: 'This review queue is where the remaining launch blockers get triaged and assigned before ship time.'
+        },
+        {
+          id: 'launch_rail',
+          title: 'Launch rail',
+          targetId: 'tourTargetLaunch',
+          text: 'The launch rail is the last stop in the tour. It shows the next milestone, the owner, and whether the rollout is clear to continue.'
+        }
+      ]);
+
+      const baseState = {
+        charPos: { x: 104, y: 134 },
+        charTargetPos: { x: 104, y: 134 },
+        bubblePos: { x: 404, y: 78 },
+        panelPos: { x: 0, y: 24 },
+        bubbleSize: { w: 420, h: 258 },
+        charSize: { w: 263, h: 519 },
+        layoutScale: 1,
+        stance: 'pointer',
+        mode: 'speech',
+        text: TOUR_STEPS[0].text,
+        bubbleOffset: { x: 228, y: -54 },
+        buttons: [],
+        tourStepIndex: 0,
+        panelMinimized: true,
+        isMirrored: false,
+        eyeIntensity: 1,
+        overlayDirty: true,
+        pendingStepSolve: false,
+        dragPinnedSlippy: false,
+        dragPinnedBubble: false,
+        invalidSlippyReturnAt: 0,
+        invalidBubbleReturnAt: 0,
+        charMotion: {
+          active: false,
+          startAt: 0,
+          durationMs: SCRIPTED_MOVE_DURATION_MS,
+          from: { x: 104, y: 134 },
+          to: { x: 104, y: 134 }
+        },
+        bubbleMotion: {
+          active: false,
+          startAt: 0,
+          durationMs: BUBBLE_RETURN_DURATION_MS,
+          from: { x: 404, y: 78 },
+          to: { x: 404, y: 78 }
+        },
+        tourOverlay: {
+          frameRect: null,
+          arrowRect: null,
+          targetRect: null,
+          targetVisible: false,
+          arrowDirection: 'none'
+        },
+        lastSolverLayout: {
+          charPos: { x: 104, y: 134 },
+          bubbleOffset: { x: 228, y: -54 },
+          scale: 1
+        },
+        debugVisuals: {
+          slippyRect: false,
+          slippyCapsule: false,
+          sightline: false,
+          sightlineCorridor: false,
+          overlayFramePad: false,
+          overlayArrowPad: false
+        },
+        codexDebug: {
+          tabId: '',
+          status: 'Click the Codex button to stamp this tab with a unique id and copy CDP attach instructions.'
+        },
+        tipOffset: 0,
+        pivotOffset: { x: 0, y: 0 },
+        eyeRig: {
+          leftCx: 92,
+          rightCx: 147,
+          leftXBias: 0,
+          rightXBias: 0,
+          leftYBias: -0.5,
+          rightYBias: 0.5,
+          cy: 224.5,
+          rx: 22.5,
+          ry: 25.8,
+          leftRx: 20,
+          rightRx: 25,
+          leftRy: 24.8,
+          rightRy: 26.8,
+          pupilRx: 7.7,
+          pupilRy: 6.6,
+          leftRotateDeg: 0,
+          rightRotateDeg: 0
+        },
+        calibration: {
+          eyeCenterX: 119.5,
+          eyeCenterY: 224.5,
+          eyeSpacing: 55
+        },
+        pointerRig: {
+          shoulderX: 86,
+          shoulderY: 268,
+          shoulderOriginX: 4,
+          shoulderOriginY: 10,
+          elbowOffsetX: -2,
+          elbowOffsetY: 1,
+          elbowOriginX: 102,
+          elbowOriginY: 12,
+          upperArmLength: 52,
+          forearmLength: 100,
+          upperNeutralDeg: 0,
+          forearmNeutralDeg: 190,
+          forearmNudgeX: 0,
+          forearmNudgeY: 0,
+          bendDirection: -1,
+          maxElbowInteriorDeg: 168
+        },
+        armDisplay: {
+          upperRotateDeg: 0,
+          forearmRotateDeg: 190,
+          initialized: false
+        },
+        selectedEye: 'left'
+      };
+
+      const state = structuredClone(baseState);
+      state.eyeBehavior = createEyeBehavior();
+      state.bee = createBeeState();
+      state.codexDebug.tabId = generateCodexTabId();
+      let currentDrag = null;
+      let panelBarInteraction = null;
+      let eyeAnimationFrame = 0;
+      let lastMotionTickMs = getNowMs();
+      let pendingStepSolveTimer = 0;
+      let pendingScrollSolveTimer = 0;
+      let invalidSlippyReturnTimer = 0;
+      let invalidBubbleReturnTimer = 0;
+      syncLayoutScale(baseState.layoutScale || 1);
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function lerp(start, end, amount) {
+        return start + ((end - start) * amount);
+      }
+
+      function randomRange(min, max) {
+        return min + ((max - min) * Math.random());
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function getNowMs() {
+        return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+          ? performance.now()
+          : Date.now();
+      }
+
+      function createEyeBehavior(nowMs = getNowMs()) {
+        return {
+          offsetX: 0,
+          offsetY: 0,
+          targetOffsetX: 0,
+          targetOffsetY: 0,
+          nextSaccadeAt: nowMs + randomRange(650, 1800),
+          maxActiveSaccadePx: 2.4,
+          maxIdleSaccadePx: 5.2,
+          idleThresholdMs: 2000,
+          lastTargetMoveAt: nowMs,
+          blinking: false,
+          blinkProgress: 0,
+          blinkStartAt: 0,
+          blinkDurationMs: 160,
+          nextBlinkAt: nowMs + randomRange(2200, 6200)
+        };
+      }
+
+      function noteEyeActivity() {
+        if (state.eyeBehavior) {
+          state.eyeBehavior.lastTargetMoveAt = getNowMs();
+        }
+      }
+
+      function createBeeState() {
+        const spawnPoint = chooseBeeBumbleTarget();
+        const targetPoint = chooseBeeBumbleTarget();
+        const dx = targetPoint.x - spawnPoint.x;
+        const dy = targetPoint.y - spawnPoint.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const initialSpeed = 2.2 * beeBumbleSpeedScale;
+        return {
+          x: spawnPoint.x,
+          y: spawnPoint.y,
+          vx: (dx / dist) * initialSpeed,
+          vy: (dy / dist) * initialSpeed,
+          targetX: targetPoint.x,
+          targetY: targetPoint.y,
+          nextRetargetAt: getNowMs() + randomRange(450, 1100),
+          mode: 'bumble',
+          approachStartedAt: 0,
+          shooStartedAt: 0,
+          shooUntil: 0,
+          shooRadius: 0,
+          shooBaseAngle: 0,
+          shooPhase: 0,
+          calmUntil: 0,
+          stressed: false,
+          angleDeg: (Math.atan2(dy, dx) * 180) / Math.PI
+        };
+      }
+
+      function stabilizeAngleDegrees(previousDeg, nextDeg) {
+        if (!Number.isFinite(previousDeg)) {
+          return nextDeg;
+        }
+        let adjusted = nextDeg;
+        while ((adjusted - previousDeg) > 180) adjusted -= 360;
+        while ((adjusted - previousDeg) < -180) adjusted += 360;
+        return adjusted;
+      }
+
+      function setAbsolutePosition(node, pos) {
+        node.style.left = `${pos.x}px`;
+        node.style.top = `${pos.y}px`;
+      }
+
+      function clonePos(pos) {
+        return {
+          x: Number(pos && pos.x) || 0,
+          y: Number(pos && pos.y) || 0
+        };
+      }
+
+      function scaleSceneSize(size, scale) {
+        const safeScale = clamp(Number(scale) || 1, 0.5, 1);
+        return {
+          w: (Number(size && size.w) || 0) * safeScale,
+          h: (Number(size && size.h) || 0) * safeScale
+        };
+      }
+
+      function scaleLocalPx(value, scale = state.layoutScale) {
+        return (Number(value) || 0) * (Number(scale) || 1);
+      }
+
+      function syncLayoutScale(scale = state.layoutScale) {
+        const safeScale = clamp(Number(scale) || 1, 0.5, 1);
+        state.layoutScale = safeScale;
+        state.charSize = scaleSceneSize(baseState.charSize, safeScale);
+        state.bubbleSize = scaleSceneSize(baseState.bubbleSize, safeScale);
+      }
+
+      function withLayoutScale(scale, callback) {
+        const previousScale = state.layoutScale;
+        const previousCharSize = { ...state.charSize };
+        const previousBubbleSize = { ...state.bubbleSize };
+        syncLayoutScale(scale);
+        try {
+          return callback();
+        } finally {
+          state.layoutScale = previousScale;
+          state.charSize = previousCharSize;
+          state.bubbleSize = previousBubbleSize;
+        }
+      }
+
+      function getScaledBaseBubbleOffset() {
+        return {
+          x: scaleLocalPx(baseState.bubbleOffset.x),
+          y: scaleLocalPx(baseState.bubbleOffset.y)
+        };
+      }
+
+      function getSlippySceneTransform(isMirrored = Boolean(state.isMirrored), scale = state.layoutScale) {
+        const safeScale = Math.max(0.0001, Number(scale) || 1);
+        if (isMirrored) {
+          return `translateX(${(baseState.charSize.w * safeScale).toFixed(3)}px) scale(${(-safeScale).toFixed(4)}, ${safeScale.toFixed(4)})`;
+        }
+        return `scale(${safeScale.toFixed(4)})`;
+      }
+
+      function rectFromPosSize(pos, size) {
+        return {
+          x: Number(pos && pos.x) || 0,
+          y: Number(pos && pos.y) || 0,
+          w: Number(size && size.w) || 0,
+          h: Number(size && size.h) || 0
+        };
+      }
+
+      function inflateRect(rect, pad) {
+        return {
+          x: rect.x - pad,
+          y: rect.y - pad,
+          w: rect.w + (pad * 2),
+          h: rect.h + (pad * 2)
+        };
+      }
+
+      function rectsIntersect(a, b) {
+        if (!a || !b) {
+          return false;
+        }
+        return a.x < (b.x + b.w)
+          && (a.x + a.w) > b.x
+          && a.y < (b.y + b.h)
+          && (a.y + a.h) > b.y;
+      }
+
+      function circleIntersectsRect(circle, rect) {
+        if (!circle || !rect) {
+          return false;
+        }
+        const nearestX = clamp(circle.cx, rect.x, rect.x + rect.w);
+        const nearestY = clamp(circle.cy, rect.y, rect.y + rect.h);
+        const dx = circle.cx - nearestX;
+        const dy = circle.cy - nearestY;
+        return ((dx * dx) + (dy * dy)) <= (circle.r * circle.r);
+      }
+
+      function ellipseIntersectsRect(ellipse, rect) {
+        if (!ellipse || !rect) {
+          return false;
+        }
+        const nearestX = clamp(ellipse.cx, rect.x, rect.x + rect.w);
+        const nearestY = clamp(ellipse.cy, rect.y, rect.y + rect.h);
+        const dx = (nearestX - ellipse.cx) / Math.max(ellipse.rx, 0.0001);
+        const dy = (nearestY - ellipse.cy) / Math.max(ellipse.ry, 0.0001);
+        return ((dx * dx) + (dy * dy)) <= 1;
+      }
+
+      function capsuleIntersectsRect(capsule, rect) {
+        if (!capsule || !rect) {
+          return false;
+        }
+        const radius = capsule.radius;
+        const middleRect = {
+          x: capsule.x,
+          y: capsule.y + radius,
+          w: capsule.w,
+          h: Math.max(0, capsule.h - (radius * 2))
+        };
+        if (rectsIntersect(rect, middleRect)) {
+          return true;
+        }
+        const cx = capsule.x + (capsule.w / 2);
+        return circleIntersectsRect({ cx, cy: capsule.y + radius, r: radius }, rect)
+          || circleIntersectsRect({ cx, cy: capsule.y + capsule.h - radius, r: radius }, rect);
+      }
+
+      function getViewportSafeInsets() {
+        return {
+          x: clamp(window.innerWidth * 0.06, 20, 72),
+          y: clamp(window.innerHeight * 0.08, 20, 88)
+        };
+      }
+
+      function getDefaultPanelX() {
+        return Math.max(12, window.innerWidth - 284);
+      }
+
+      function syncPanelVisibility() {
+        controlPanel.classList.toggle('panel-minimized', Boolean(state.panelMinimized));
+        document.documentElement.dataset.panelMinimized = String(Boolean(state.panelMinimized));
+      }
+
+      function requestOverlayRefresh() {
+        state.overlayDirty = true;
+      }
+
+      function setDebugRectNode(node, rect, options = {}) {
+        if (!node || !rect || options.visible === false) {
+          if (node) {
+            node.style.display = 'none';
+          }
+          return;
+        }
+        node.style.display = 'block';
+        node.style.left = `${rect.x}px`;
+        node.style.top = `${rect.y}px`;
+        node.style.width = `${rect.w}px`;
+        node.style.height = `${rect.h}px`;
+        if (options.borderRadius) {
+          node.style.borderRadius = options.borderRadius;
+        }
+      }
+
+      function syncDebugControls() {
+        toggleSlippyHitbox.checked = Boolean(state.debugVisuals.slippyRect);
+        toggleSlippyCapsule.checked = Boolean(state.debugVisuals.slippyCapsule);
+        toggleSightline.checked = Boolean(state.debugVisuals.sightline);
+        toggleSightlineCorridor.checked = Boolean(state.debugVisuals.sightlineCorridor);
+        toggleOverlayFramePad.checked = Boolean(state.debugVisuals.overlayFramePad);
+        toggleOverlayArrowPad.checked = Boolean(state.debugVisuals.overlayArrowPad);
+        codexDebugId.value = String(state.codexDebug.tabId || '');
+        codexDebugStatus.textContent = String(state.codexDebug.status || '');
+      }
+
+      function generateCodexTabId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return `slippy-${window.crypto.randomUUID().split('-')[0]}`;
+        }
+        const fallback = Math.random().toString(36).slice(2, 10);
+        return `slippy-${fallback || 'debug'}`;
+      }
+
+      function applyCodexDebugMarker(tabId) {
+        const safeId = String(tabId || generateCodexTabId());
+        window.__codexTabId = safeId;
+        document.documentElement.dataset.codexTabId = safeId;
+        document.documentElement.dataset.codexDebugPort = String(CODEX_DEBUG_PORT);
+        document.title = `[${safeId}] ` + document.title.replace(/^\[[^\]]+\]\s*/, '');
+        return safeId;
+      }
+
+      function buildCodexAttachSnippet(tabId) {
+        return [
+          '(() => {',
+          `  const codexTabId = '${tabId}';`,
+          '  window.__codexTabId = codexTabId;',
+          '  document.documentElement.dataset.codexTabId = codexTabId;',
+          `  document.documentElement.dataset.codexDebugPort = '${CODEX_DEBUG_PORT}';`,
+          "  document.title = `[${codexTabId}] ` + document.title.replace(/^\\[[^\\]]+\\]\\s*/, '');",
+          "  console.log('codexTabId:', codexTabId);",
+          '})();'
+        ].join('\n');
+      }
+
+      function buildCodexAttachCopyText(tabId) {
+        return [
+          `Codex live-debug attach helper`,
+          '',
+          `Port: ${CODEX_DEBUG_PORT}`,
+          `Tab id: ${tabId}`,
+          '',
+          'If Chrome is not already running with a CDP port, launch it with:',
+          `open -na "Google Chrome" --args --remote-debugging-port=${CODEX_DEBUG_PORT}`,
+          '',
+          'This page has already been marked with the tab id above. If you need to reapply it manually in DevTools, run:',
+          buildCodexAttachSnippet(tabId),
+          '',
+          'Then tell Codex:',
+          `Attach over CDP to port ${CODEX_DEBUG_PORT} and target tab id ${tabId}.`
+        ].join('\n');
+      }
+
+      function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise((resolve, reject) => {
+          const helper = document.createElement('textarea');
+          helper.value = text;
+          helper.setAttribute('readonly', 'readonly');
+          helper.style.position = 'fixed';
+          helper.style.top = '-1000px';
+          helper.style.left = '-1000px';
+          document.body.appendChild(helper);
+          helper.focus();
+          helper.select();
+          let copied = false;
+          try {
+            copied = document.execCommand('copy');
+          } catch (error) {
+            document.body.removeChild(helper);
+            reject(error);
+            return;
+          }
+          document.body.removeChild(helper);
+          if (copied) {
+            resolve();
+          } else {
+            reject(new Error('Clipboard copy was blocked.'));
+          }
+        });
+      }
+
+      async function copyCodexAttachHook() {
+        const nextId = generateCodexTabId();
+        state.codexDebug.tabId = applyCodexDebugMarker(nextId);
+        syncDebugControls();
+        const copyText = buildCodexAttachCopyText(state.codexDebug.tabId);
+        try {
+          await copyTextToClipboard(copyText);
+          state.codexDebug.status = `Copied attach helper for ${state.codexDebug.tabId}. Share port ${CODEX_DEBUG_PORT} and that tab id with Codex.`;
+        } catch (error) {
+          const message = error && error.message ? error.message : String(error || 'Clipboard copy failed.');
+          state.codexDebug.status = `Stamped this tab as ${state.codexDebug.tabId}, but clipboard copy failed: ${message}`;
+        }
+        syncDebugControls();
+      }
+
+      function getCurrentTourStep() {
+        return TOUR_STEPS[clamp(state.tourStepIndex, 0, TOUR_STEPS.length - 1)] || TOUR_STEPS[0];
+      }
+
+      function getCurrentTourTargetNode() {
+        const step = getCurrentTourStep();
+        return step ? document.getElementById(step.targetId) : null;
+      }
+
+      function getCurrentStepLayoutHints() {
+        const step = getCurrentTourStep();
+        return step && step.layoutHints && typeof step.layoutHints === 'object'
+          ? step.layoutHints
+          : {};
+      }
+
+      function computeTourOverlayGeometry() {
+        const targetNode = getCurrentTourTargetNode();
+        if (!targetNode) {
+          return {
+            frameRect: null,
+            arrowRect: null,
+            targetRect: null,
+            targetVisible: false,
+            arrowDirection: 'none'
+          };
+        }
+
+        const rect = targetNode.getBoundingClientRect();
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        const horizontalVisible = rect.right > 0 && rect.left < viewportW;
+        const verticalVisible = rect.bottom > 0 && rect.top < viewportH;
+        const anyVisible = horizontalVisible && verticalVisible;
+        const fullyOffTop = rect.bottom <= 0;
+        const fullyOffBottom = rect.top >= viewportH;
+
+        if (anyVisible) {
+          const pad = OVERLAY_PAD_PX;
+          return {
+            frameRect: {
+              x: rect.left - pad,
+              y: rect.top - pad,
+              w: rect.width + (pad * 2),
+              h: rect.height + (pad * 2),
+              borderRadius: window.getComputedStyle(targetNode).borderRadius || '26px'
+            },
+            arrowRect: null,
+            targetRect: {
+              x: rect.left,
+              y: rect.top,
+              w: rect.width,
+              h: rect.height
+            },
+            targetVisible: true,
+            arrowDirection: 'none'
+          };
+        }
+
+        if (fullyOffTop || fullyOffBottom) {
+          const centerX = clamp(rect.left + (rect.width / 2), 56, viewportW - 56);
+          const arrowTop = fullyOffTop ? 16 : (viewportH - 16 - 52);
+          return {
+            frameRect: null,
+            arrowRect: {
+              x: centerX - 48,
+              y: arrowTop,
+              w: 96,
+              h: 52
+            },
+            targetRect: {
+              x: rect.left,
+              y: rect.top,
+              w: rect.width,
+              h: rect.height
+            },
+            targetVisible: false,
+            arrowDirection: fullyOffTop ? 'up' : 'down'
+          };
+        }
+
+        return {
+          frameRect: null,
+          arrowRect: null,
+          targetRect: {
+            x: rect.left,
+            y: rect.top,
+            w: rect.width,
+            h: rect.height
+          },
+          targetVisible: false,
+          arrowDirection: 'none'
+        };
+      }
+
+      function renderTourFocusOverlay(force = false) {
+        if (!force && !state.overlayDirty) {
+          renderOverlayDebugBounds(state.tourOverlay);
+          return state.tourOverlay;
+        }
+        const overlay = computeTourOverlayGeometry();
+        state.tourOverlay = overlay;
+        state.overlayDirty = false;
+
+        if (!overlay.frameRect) {
+          tourTargetFrame.style.display = 'none';
+        } else {
+          tourTargetFrame.style.display = 'block';
+          tourTargetFrame.style.left = `${overlay.frameRect.x}px`;
+          tourTargetFrame.style.top = `${overlay.frameRect.y}px`;
+          tourTargetFrame.style.width = `${overlay.frameRect.w}px`;
+          tourTargetFrame.style.height = `${overlay.frameRect.h}px`;
+          tourTargetFrame.style.borderRadius = overlay.frameRect.borderRadius || '26px';
+        }
+
+        if (!overlay.arrowRect || overlay.arrowDirection === 'none') {
+          tourTargetArrow.style.display = 'none';
+          tourTargetArrow.disabled = true;
+          tourTargetArrow.classList.remove('arrow-up', 'arrow-down');
+        } else {
+          tourTargetArrow.style.display = 'block';
+          tourTargetArrow.disabled = false;
+          tourTargetArrow.style.left = `${overlay.arrowRect.x + (overlay.arrowRect.w / 2)}px`;
+          tourTargetArrow.classList.remove('arrow-up', 'arrow-down');
+          tourTargetArrow.classList.add(overlay.arrowDirection === 'up' ? 'arrow-up' : 'arrow-down');
+          tourTargetArrow.setAttribute(
+            'aria-label',
+            overlay.arrowDirection === 'up'
+              ? 'Scroll to current tour target above'
+              : 'Scroll to current tour target below'
+          );
+        }
+
+        document.documentElement.dataset.tourTargetVisible = overlay.targetVisible ? 'true' : 'false';
+        document.documentElement.dataset.tourArrow = overlay.arrowDirection || 'none';
+        renderOverlayDebugBounds(overlay);
+        return overlay;
+      }
+
+      function getOverlayObstacles(overlay = state.tourOverlay) {
+        return {
+          frameRect: overlay && overlay.frameRect ? inflateRect(overlay.frameRect, OVERLAY_GLOW_PAD_PX) : null,
+          arrowRect: overlay && overlay.arrowRect ? inflateRect(overlay.arrowRect, 12) : null
+        };
+      }
+
+      function renderOverlayDebugBounds(overlay = state.tourOverlay) {
+        const obstacles = getOverlayObstacles(overlay);
+        const baseFrameRadius = overlay && overlay.frameRect && overlay.frameRect.borderRadius
+          ? parseFloat(String(overlay.frameRect.borderRadius)) || 26
+          : 26;
+        setDebugRectNode(overlayFrameBounds, obstacles.frameRect, {
+          visible: Boolean(state.debugVisuals.overlayFramePad),
+          borderRadius: `${Math.round(baseFrameRadius + OVERLAY_GLOW_PAD_PX)}px`
+        });
+        setDebugRectNode(overlayArrowBounds, obstacles.arrowRect, {
+          visible: Boolean(state.debugVisuals.overlayArrowPad),
+          borderRadius: '22px'
+        });
+      }
+
+      function getSlippyBubbleExclusionCapsule(charPos = state.charPos) {
+        const insetX = scaleLocalPx(14);
+        const insetY = scaleLocalPx(10);
+        const capsuleWidth = Math.max(scaleLocalPx(116), state.charSize.w - (insetX * 2));
+        const capsuleHeight = Math.max(scaleLocalPx(250), state.charSize.h - scaleLocalPx(24));
+        return {
+          x: charPos.x + insetX,
+          y: charPos.y + insetY,
+          w: capsuleWidth,
+          h: capsuleHeight,
+          radius: capsuleWidth / 2
+        };
+      }
+
+      function getSlippyBubbleExclusionRect(charPos = state.charPos) {
+        return inflateRect(rectFromPosSize(charPos, state.charSize), scaleLocalPx(18));
+      }
+
+      function getBubbleTargetPos(charPos = state.charPos, bubbleOffset = state.bubbleOffset) {
+        return {
+          x: charPos.x + Number(bubbleOffset && bubbleOffset.x || 0),
+          y: charPos.y + Number(bubbleOffset && bubbleOffset.y || 0)
+        };
+      }
+
+      function getBubbleInteriorRect(bubblePos = state.bubblePos) {
+        const rx = Math.max(scaleLocalPx(12), (state.bubbleSize.w / 2) - scaleLocalPx(5));
+        const ry = Math.max(scaleLocalPx(12), (state.bubbleSize.h / 2) - scaleLocalPx(5));
+        const innerInset = scaleLocalPx(6);
+        const halfWidth = Math.max(scaleLocalPx(18), (rx - innerInset) / Math.SQRT2);
+        const halfHeight = Math.max(scaleLocalPx(18), (ry - innerInset) / Math.SQRT2);
+        const centerX = bubblePos.x + (state.bubbleSize.w / 2);
+        const centerY = bubblePos.y + (state.bubbleSize.h / 2);
+        return {
+          x: centerX - halfWidth,
+          y: centerY - halfHeight,
+          w: halfWidth * 2,
+          h: halfHeight * 2
+        };
+      }
+
+      function getBubbleBodyEllipse(bubblePos = state.bubblePos) {
+        return {
+          cx: bubblePos.x + (state.bubbleSize.w / 2),
+          cy: bubblePos.y + (state.bubbleSize.h / 2),
+          rx: Math.max(scaleLocalPx(12), (state.bubbleSize.w / 2) - scaleLocalPx(5)),
+          ry: Math.max(scaleLocalPx(12), (state.bubbleSize.h / 2) - scaleLocalPx(5))
+        };
+      }
+
+      function getSpeechTailTipOrigin(charPos = state.charPos) {
+        return {
+          x: charPos.x + (state.charSize.w * 0.48),
+          y: charPos.y + (state.charSize.h * 0.45),
+          rx: (state.charSize.w * 0.28) + scaleLocalPx(state.tipOffset),
+          ry: (state.charSize.h * 0.18) + scaleLocalPx(state.tipOffset)
+        };
+      }
+
+      function getSpeechTailLaunchCircle(charPos = state.charPos) {
+        const tipOrigin = getSpeechTailTipOrigin(charPos);
+        return {
+          cx: tipOrigin.x,
+          cy: tipOrigin.y,
+          r: Math.max(tipOrigin.rx, tipOrigin.ry) + scaleLocalPx(58)
+        };
+      }
+
+      function doesBubbleInvadeSpeechTailLaunchZone(charPos, bubblePos) {
+        return circleIntersectsRect(getSpeechTailLaunchCircle(charPos), getBubbleInteriorRect(bubblePos));
+      }
+
+      function getSpeechAnchorPoint(charPos) {
+        return {
+          x: charPos.x + scaleLocalPx((state.calibration.eyeCenterX || 119.5) + 10),
+          y: charPos.y + scaleLocalPx((state.calibration.eyeCenterY || 224.5) - 8)
+        };
+      }
+
+      function getTargetCenter(targetRect) {
+        if (!targetRect) {
+          return {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2
+          };
+        }
+        return {
+          x: targetRect.x + (targetRect.w / 2),
+          y: targetRect.y + (targetRect.h / 2)
+        };
+      }
+
+      function getPredictedMirrorState(charPos, targetRect) {
+        const targetCenter = getTargetCenter(targetRect);
+        return targetCenter.x > (charPos.x + (state.charSize.w / 2));
+      }
+
+      function getEyeMidpointForChar(charPos, targetRect) {
+        const localHeadX = scaleLocalPx((state.eyeRig.leftCx + state.eyeRig.rightCx) / 2);
+        const mirroredHeadX = getPredictedMirrorState(charPos, targetRect)
+          ? (state.charSize.w - localHeadX)
+          : localHeadX;
+        const localHeadY = scaleLocalPx((state.eyeRig.leftCy + state.eyeRig.rightCy) / 2);
+        return {
+          x: charPos.x + mirroredHeadX,
+          y: charPos.y + localHeadY
+        };
+      }
+
+      function orientation(a, b, c) {
+        return ((b.x - a.x) * (c.y - a.y)) - ((b.y - a.y) * (c.x - a.x));
+      }
+
+      function onSegment(a, b, c) {
+        return Math.min(a.x, c.x) <= b.x
+          && b.x <= Math.max(a.x, c.x)
+          && Math.min(a.y, c.y) <= b.y
+          && b.y <= Math.max(a.y, c.y);
+      }
+
+      function segmentsIntersect(a1, a2, b1, b2) {
+        const o1 = orientation(a1, a2, b1);
+        const o2 = orientation(a1, a2, b2);
+        const o3 = orientation(b1, b2, a1);
+        const o4 = orientation(b1, b2, a2);
+        const EPSILON = 0.0001;
+
+        if (((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) && ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0))) {
+          return true;
+        }
+        if (Math.abs(o1) <= EPSILON && onSegment(a1, b1, a2)) return true;
+        if (Math.abs(o2) <= EPSILON && onSegment(a1, b2, a2)) return true;
+        if (Math.abs(o3) <= EPSILON && onSegment(b1, a1, b2)) return true;
+        if (Math.abs(o4) <= EPSILON && onSegment(b1, a2, b2)) return true;
+        return false;
+      }
+
+      function segmentIntersectsRect(start, end, rect, padding = 0) {
+        if (!start || !end || !rect) {
+          return false;
+        }
+        const expanded = inflateRect(rect, padding);
+        if (isPointInsideRect(start, expanded) || isPointInsideRect(end, expanded)) {
+          return true;
+        }
+        const topLeft = { x: expanded.x, y: expanded.y };
+        const topRight = { x: expanded.x + expanded.w, y: expanded.y };
+        const bottomRight = { x: expanded.x + expanded.w, y: expanded.y + expanded.h };
+        const bottomLeft = { x: expanded.x, y: expanded.y + expanded.h };
+        return segmentsIntersect(start, end, topLeft, topRight)
+          || segmentsIntersect(start, end, topRight, bottomRight)
+          || segmentsIntersect(start, end, bottomRight, bottomLeft)
+          || segmentsIntersect(start, end, bottomLeft, topLeft);
+      }
+
+      function doesBubbleBlockAttentionLine(charPos, bubblePos, overlay = state.tourOverlay) {
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        if (!targetRect) {
+          return false;
+        }
+        const lineStart = getEyeMidpointForChar(charPos, targetRect);
+        const lineEnd = getTargetCenter(targetRect);
+        return segmentIntersectsRect(lineStart, lineEnd, getBubbleInteriorRect(bubblePos), 0);
+      }
+
+      function renderAttentionSightline(overlay = state.tourOverlay) {
+        if (!sightlineInk) {
+          return;
+        }
+        sightlineInk.innerHTML = '';
+        const showSightline = Boolean(state.debugVisuals.sightline);
+        const showCorridor = Boolean(state.debugVisuals.sightlineCorridor);
+        if (!showSightline && !showCorridor) {
+          return;
+        }
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        if (!targetRect) {
+          return;
+        }
+
+        const start = getEyeMidpointForChar(state.charPos, targetRect);
+        const end = getTargetCenter(targetRect);
+
+        if (showCorridor) {
+          const corridor = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          corridor.setAttribute('x1', String(start.x));
+          corridor.setAttribute('y1', String(start.y));
+          corridor.setAttribute('x2', String(end.x));
+          corridor.setAttribute('y2', String(end.y));
+          corridor.setAttribute('stroke', 'rgba(96, 205, 255, 0.16)');
+          corridor.setAttribute('stroke-width', String((ATTENTION_LINE_PAD_PX * 2) + 4));
+          corridor.setAttribute('stroke-linecap', 'round');
+          sightlineInk.appendChild(corridor);
+        }
+
+        if (showSightline) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', String(start.x));
+          line.setAttribute('y1', String(start.y));
+          line.setAttribute('x2', String(end.x));
+          line.setAttribute('y2', String(end.y));
+          line.setAttribute('stroke', 'rgba(56, 189, 248, 0.92)');
+          line.setAttribute('stroke-width', '3');
+          line.setAttribute('stroke-linecap', 'round');
+          line.setAttribute('stroke-dasharray', '9 8');
+          sightlineInk.appendChild(line);
+
+          for (const point of [start, end]) {
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', String(point.x));
+            dot.setAttribute('cy', String(point.y));
+            dot.setAttribute('r', '5.5');
+            dot.setAttribute('fill', 'rgba(223, 248, 255, 0.96)');
+            dot.setAttribute('stroke', 'rgba(26, 105, 145, 0.88)');
+            dot.setAttribute('stroke-width', '2');
+            sightlineInk.appendChild(dot);
+          }
+        }
+      }
+
+      function resolveTargetQuadrant(targetRect) {
+        const center = getTargetCenter(targetRect);
+        const horizontal = center.x < (window.innerWidth / 2) ? 'left' : 'right';
+        const vertical = center.y < (window.innerHeight / 2) ? 'top' : 'bottom';
+        return `${vertical}-${horizontal}`;
+      }
+
+      function uniqueOrdered(values) {
+        const seen = new Set();
+        return values.filter((value) => {
+          if (!value || seen.has(value)) {
+            return false;
+          }
+          seen.add(value);
+          return true;
+        });
+      }
+
+      function buildQuadrantOrder(targetQuadrant, preferredQuadrant = null) {
+        const byTarget = {
+          'top-left': ['top-right', 'bottom-right', 'bottom-left', 'top-left'],
+          'top-right': ['top-left', 'bottom-left', 'bottom-right', 'top-right'],
+          'bottom-left': ['bottom-right', 'top-right', 'top-left', 'bottom-left'],
+          'bottom-right': ['bottom-left', 'top-left', 'top-right', 'bottom-right']
+        };
+        return uniqueOrdered([preferredQuadrant].concat(byTarget[targetQuadrant] || byTarget['top-left']));
+      }
+
+      function buildBubbleSideOrder(charPos, targetRect, preferredSide = null) {
+        const anchor = getSpeechAnchorPoint(charPos);
+        const targetCenter = getTargetCenter(targetRect);
+        const dx = targetCenter.x - anchor.x;
+        const dy = targetCenter.y - anchor.y;
+        const dominantHorizontal = Math.abs(dx) >= Math.abs(dy);
+        const awaySide = dominantHorizontal
+          ? (dx >= 0 ? 'left' : 'right')
+          : (dy >= 0 ? 'above' : 'below');
+        const facingSide = awaySide === 'left'
+          ? 'right'
+          : awaySide === 'right'
+            ? 'left'
+            : awaySide === 'above'
+              ? 'below'
+              : 'above';
+        const perpendicular = dominantHorizontal
+          ? (dy >= 0 ? ['above', 'below'] : ['below', 'above'])
+          : (dx >= 0 ? ['left', 'right'] : ['right', 'left']);
+        return uniqueOrdered([preferredSide, awaySide].concat(perpendicular, facingSide));
+      }
+
+      function positionBubbleOnSide(charPos, side) {
+        const anchor = getSpeechAnchorPoint(charPos);
+        const bubbleW = state.bubbleSize.w;
+        const bubbleH = state.bubbleSize.h;
+        const sideGap = scaleLocalPx(BUBBLE_SIDE_GAP_PX + 26);
+        if (side === 'left') {
+          return {
+            x: anchor.x - bubbleW - sideGap,
+            y: anchor.y - (bubbleH * 0.6)
+          };
+        }
+        if (side === 'above') {
+          return {
+            x: anchor.x - (bubbleW * 0.42),
+            y: anchor.y - bubbleH - scaleLocalPx(78)
+          };
+        }
+        if (side === 'below') {
+          return {
+            x: anchor.x - (bubbleW * 0.42),
+            y: anchor.y + scaleLocalPx(88)
+          };
+        }
+        return {
+          x: anchor.x + sideGap,
+          y: anchor.y - (bubbleH * 0.6)
+        };
+      }
+
+      function getBubbleSideVariantSpecs(side) {
+        if (side === 'left' || side === 'right') {
+          return [
+            { factor: 0.5, extraGap: 0 },
+            { factor: 0.32, extraGap: 0 },
+            { factor: 0.68, extraGap: 0 },
+            { factor: 0.18, extraGap: 22 },
+            { factor: 0.82, extraGap: 22 },
+            { factor: 0.5, extraGap: 48 },
+            { factor: 0.32, extraGap: 72 },
+            { factor: 0.68, extraGap: 72 },
+            { factor: 0.12, extraGap: 112 },
+            { factor: 0.88, extraGap: 112 }
+          ];
+        }
+        return [
+          { factor: 0.42, extraGap: 0 },
+          { factor: 0.24, extraGap: 0 },
+          { factor: 0.64, extraGap: 0 },
+          { factor: 0.16, extraGap: 24 },
+          { factor: 0.78, extraGap: 24 },
+          { factor: 0.42, extraGap: 48 },
+          { factor: 0.24, extraGap: 82 },
+          { factor: 0.64, extraGap: 82 },
+          { factor: 0.12, extraGap: 118 },
+          { factor: 0.88, extraGap: 118 }
+        ];
+      }
+
+      function positionBubbleOnSideVariant(charPos, side, factor, extraGap = 0) {
+        const anchor = getSpeechAnchorPoint(charPos);
+        const bubbleW = state.bubbleSize.w;
+        const bubbleH = state.bubbleSize.h;
+        const sideGap = scaleLocalPx(BUBBLE_SIDE_GAP_PX + 26);
+        const scaledExtraGap = scaleLocalPx(extraGap);
+        if (side === 'left') {
+          return {
+            x: anchor.x - bubbleW - sideGap - scaledExtraGap,
+            y: anchor.y - (bubbleH * factor)
+          };
+        }
+        if (side === 'right') {
+          return {
+            x: anchor.x + sideGap + scaledExtraGap,
+            y: anchor.y - (bubbleH * factor)
+          };
+        }
+        if (side === 'above') {
+          return {
+            x: anchor.x - (bubbleW * factor),
+            y: anchor.y - bubbleH - scaleLocalPx(78) - scaledExtraGap
+          };
+        }
+        return {
+          x: anchor.x - (bubbleW * factor),
+          y: anchor.y + scaleLocalPx(88) + scaledExtraGap
+        };
+      }
+
+      function resolveBubbleVerticalRelation(charPos, bubblePos, overlay = state.tourOverlay) {
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        if (!targetRect) {
+          return 'other';
+        }
+        const bubbleHitRect = getBubbleInteriorRect(bubblePos);
+        const bubbleCenter = {
+          x: bubbleHitRect.x + (bubbleHitRect.w / 2),
+          y: bubbleHitRect.y + (bubbleHitRect.h / 2)
+        };
+        const lineStart = getEyeMidpointForChar(charPos, targetRect);
+        const lineEnd = getTargetCenter(targetRect);
+        const dx = lineEnd.x - lineStart.x;
+        const dy = lineEnd.y - lineStart.y;
+        if (Math.abs(dx) > 0.0001) {
+          const t = (bubbleCenter.x - lineStart.x) / dx;
+          const lineY = lineStart.y + (dy * t);
+          return bubbleCenter.y < lineY ? 'above' : 'below';
+        }
+        const midpointY = (lineStart.y + lineEnd.y) / 2;
+        return bubbleCenter.y < midpointY ? 'above' : 'below';
+      }
+
+      function resolveBubbleFrontBackRelation(charPos, bubblePos, overlay = state.tourOverlay) {
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        const bubbleHitRect = getBubbleInteriorRect(bubblePos);
+        const slippyMidX = charPos.x + (state.charSize.w / 2);
+        const facesRight = getPredictedMirrorState(charPos, targetRect);
+        if (facesRight) {
+          if (bubbleHitRect.x >= slippyMidX) {
+            return 'front';
+          }
+          if ((bubbleHitRect.x + bubbleHitRect.w) <= slippyMidX) {
+            return 'back';
+          }
+          return 'straddle';
+        }
+        if ((bubbleHitRect.x + bubbleHitRect.w) <= slippyMidX) {
+          return 'front';
+        }
+        if (bubbleHitRect.x >= slippyMidX) {
+          return 'back';
+        }
+        return 'straddle';
+      }
+
+      function resolveBubbleScenario(charPos, bubblePos, overlay = state.tourOverlay) {
+        const vertical = resolveBubbleVerticalRelation(charPos, bubblePos, overlay);
+        const frontBack = resolveBubbleFrontBackRelation(charPos, bubblePos, overlay);
+        if ((vertical === 'above' || vertical === 'below') && (frontBack === 'front' || frontBack === 'back')) {
+          return `${vertical}-${frontBack}`;
+        }
+        return 'anywhere';
+      }
+
+      function getBubbleScenarioRank(scenario, allowAnywhere = true) {
+        if (scenario === 'above-front') return 0;
+        if (scenario === 'above-back') return 1;
+        if (scenario === 'below-front') return 2;
+        if (scenario === 'below-back') return 3;
+        if (scenario === 'anywhere' && allowAnywhere) return 4;
+        return Number.POSITIVE_INFINITY;
+      }
+
+      function buildBubbleCandidate(charPos, bubblePos, overlay = state.tourOverlay, side = 'free', options = {}) {
+        const allowAnywhere = options.allowAnywhere !== false;
+        const bubbleOffset = {
+          x: bubblePos.x - charPos.x,
+          y: bubblePos.y - charPos.y
+        };
+        const scenario = resolveBubbleScenario(charPos, bubblePos, overlay);
+        const scenarioRank = getBubbleScenarioRank(scenario, allowAnywhere);
+        const geometricValid = isBubblePlacementValid(charPos, bubbleOffset, overlay);
+        return {
+          side,
+          bubblePos,
+          bubbleOffset,
+          scenario,
+          scenarioRank,
+          valid: geometricValid && Number.isFinite(scenarioRank),
+          score: scoreBubblePlacement(charPos, bubblePos, overlay)
+            + (Number.isFinite(scenarioRank) ? scenarioRank * 1200 : 28000)
+        };
+      }
+
+      function chooseBetterBubbleCandidate(currentBest, candidate) {
+        if (!candidate) {
+          return currentBest;
+        }
+        if (!currentBest) {
+          return candidate;
+        }
+        if (candidate.valid !== currentBest.valid) {
+          return candidate.valid ? candidate : currentBest;
+        }
+        if (candidate.valid && currentBest.valid && candidate.scenarioRank !== currentBest.scenarioRank) {
+          return candidate.scenarioRank < currentBest.scenarioRank ? candidate : currentBest;
+        }
+        if (candidate.score < currentBest.score) {
+          return candidate;
+        }
+        return currentBest;
+      }
+
+      function solveBubbleOrbitLayoutForChar(charPos, overlay = state.tourOverlay, sides = null, options = {}) {
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        const orderedSides = Array.isArray(sides) && sides.length
+          ? sides
+          : buildBubbleSideOrder(charPos, targetRect, null);
+        const anchor = getSpeechAnchorPoint(charPos);
+        const baseDistance = Math.max(state.bubbleSize.w * 0.62, state.bubbleSize.h * 0.84);
+        const angleBySide = {
+          right: 0,
+          below: Math.PI / 2,
+          left: Math.PI,
+          above: -Math.PI / 2
+        };
+        const radialOffsets = [0, 48, 96, 156, 224, 304, 392].map((value) => scaleLocalPx(value));
+        const angularOffsets = [0, -0.16, 0.16, -0.32, 0.32, -0.5, 0.5, -0.72, 0.72];
+        let best = null;
+
+        for (const side of orderedSides) {
+          const baseAngle = angleBySide[side];
+          if (!Number.isFinite(baseAngle)) {
+            continue;
+          }
+          for (const radialOffset of radialOffsets) {
+            for (const angularOffset of angularOffsets) {
+              const angle = baseAngle + angularOffset;
+              const distance = baseDistance + radialOffset;
+              const center = {
+                x: anchor.x + (Math.cos(angle) * distance),
+                y: anchor.y + (Math.sin(angle) * distance)
+              };
+              const bubblePos = clampWithinViewport({
+                x: center.x - (state.bubbleSize.w / 2),
+                y: center.y - (state.bubbleSize.h / 2)
+              }, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+              const candidate = buildBubbleCandidate(charPos, bubblePos, overlay, side, options);
+              best = chooseBetterBubbleCandidate(best, candidate);
+            }
+          }
+        }
+
+        return best;
+      }
+
+      function solveBubbleGridLayoutForChar(charPos, overlay = state.tourOverlay, options = {}) {
+        const stepX = Math.max(scaleLocalPx(34), state.bubbleSize.w * 0.16);
+        const stepY = Math.max(scaleLocalPx(28), state.bubbleSize.h * 0.16);
+        const minX = LAYOUT_VIEWPORT_MARGIN_PX;
+        const minY = LAYOUT_VIEWPORT_MARGIN_PX;
+        const maxX = Math.max(minX, window.innerWidth - state.bubbleSize.w - LAYOUT_VIEWPORT_MARGIN_PX);
+        const maxY = Math.max(minY, window.innerHeight - state.bubbleSize.h - LAYOUT_VIEWPORT_MARGIN_PX);
+        let best = null;
+
+        for (let y = minY; y <= (maxY + 0.001); y += stepY) {
+          for (let x = minX; x <= (maxX + 0.001); x += stepX) {
+            const bubblePos = {
+              x: Math.min(x, maxX),
+              y: Math.min(y, maxY)
+            };
+            const candidate = buildBubbleCandidate(charPos, bubblePos, overlay, 'grid', options);
+            best = chooseBetterBubbleCandidate(best, candidate);
+          }
+        }
+
+        return best;
+      }
+
+      function getOverflowPenalty(rect, margin = LAYOUT_VIEWPORT_MARGIN_PX) {
+        let penalty = 0;
+        penalty += Math.max(0, margin - rect.x);
+        penalty += Math.max(0, margin - rect.y);
+        penalty += Math.max(0, (rect.x + rect.w + margin) - window.innerWidth);
+        penalty += Math.max(0, (rect.y + rect.h + margin) - window.innerHeight);
+        return penalty;
+      }
+
+      function isSlippyPlacementValid(charPos, overlay = state.tourOverlay) {
+        const charRect = rectFromPosSize(charPos, state.charSize);
+        const obstacles = getOverlayObstacles(overlay);
+        return getOverflowPenalty(charRect) <= 0
+          && !rectsIntersect(charRect, obstacles.frameRect)
+          && !rectsIntersect(charRect, obstacles.arrowRect);
+      }
+
+      function isBubblePlacementValid(charPos, bubbleOffset, overlay = state.tourOverlay) {
+        const bubblePos = getBubbleTargetPos(charPos, bubbleOffset);
+        const bubbleRect = rectFromPosSize(bubblePos, state.bubbleSize);
+        const bubbleHitRect = getBubbleInteriorRect(bubblePos);
+        const bubbleEllipse = getBubbleBodyEllipse(bubblePos);
+        const obstacles = getOverlayObstacles(overlay);
+        return getOverflowPenalty(bubbleRect) <= 0
+          && !ellipseIntersectsRect(bubbleEllipse, obstacles.frameRect)
+          && !ellipseIntersectsRect(bubbleEllipse, obstacles.arrowRect)
+          && !ellipseIntersectsRect(bubbleEllipse, getSlippyBubbleExclusionRect(charPos))
+          && !doesBubbleInvadeSpeechTailLaunchZone(charPos, bubblePos)
+          && !doesBubbleBlockAttentionLine(charPos, bubblePos, overlay);
+      }
+
+      function scoreSlippyPlacement(charPos, overlay = state.tourOverlay) {
+        const charRect = rectFromPosSize(charPos, state.charSize);
+        const obstacles = getOverlayObstacles(overlay);
+        let score = getOverflowPenalty(charRect) * 20;
+        if (rectsIntersect(charRect, obstacles.frameRect)) {
+          score += 25000;
+        }
+        if (rectsIntersect(charRect, obstacles.arrowRect)) {
+          score += 22000;
+        }
+        return score;
+      }
+
+      function scoreBubblePlacement(charPos, bubblePos, overlay = state.tourOverlay) {
+        const bubbleRect = rectFromPosSize(bubblePos, state.bubbleSize);
+        const bubbleHitRect = getBubbleInteriorRect(bubblePos);
+        const bubbleEllipse = getBubbleBodyEllipse(bubblePos);
+        const obstacles = getOverlayObstacles(overlay);
+        let score = getOverflowPenalty(bubbleRect) * 16;
+        if (ellipseIntersectsRect(bubbleEllipse, obstacles.frameRect)) {
+          score += 21000;
+        }
+        if (ellipseIntersectsRect(bubbleEllipse, obstacles.arrowRect)) {
+          score += 18000;
+        }
+        if (ellipseIntersectsRect(bubbleEllipse, getSlippyBubbleExclusionRect(charPos))) {
+          score += 22000;
+        }
+        if (doesBubbleInvadeSpeechTailLaunchZone(charPos, bubblePos)) {
+          score += 26000;
+        }
+        if (doesBubbleBlockAttentionLine(charPos, bubblePos, overlay)) {
+          score += 22000;
+        }
+        return score;
+      }
+
+      function solveBubbleLayoutForChar(charPos, overlay = state.tourOverlay, options = {}) {
+        const hints = getCurrentStepLayoutHints();
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        const sides = buildBubbleSideOrder(charPos, targetRect, hints.bubbleSide || null);
+        let best = null;
+
+        for (const side of sides) {
+          const variants = getBubbleSideVariantSpecs(side);
+          for (const variant of variants) {
+            const bubblePos = positionBubbleOnSideVariant(charPos, side, variant.factor, variant.extraGap);
+            const candidate = buildBubbleCandidate(charPos, bubblePos, overlay, side, options);
+            best = chooseBetterBubbleCandidate(best, candidate);
+          }
+        }
+
+        const orbitCandidate = solveBubbleOrbitLayoutForChar(charPos, overlay, sides, options);
+        best = chooseBetterBubbleCandidate(best, orbitCandidate);
+
+        if (!best || !best.valid) {
+          const gridCandidate = solveBubbleGridLayoutForChar(charPos, overlay, options);
+          best = chooseBetterBubbleCandidate(best, gridCandidate);
+        }
+
+        const clampedPos = clampWithinViewport(best ? best.bubblePos : baseState.bubblePos, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+        return chooseBetterBubbleCandidate(best, buildBubbleCandidate(charPos, clampedPos, overlay, best ? best.side : 'right', options));
+      }
+
+      function resolveCharPosForQuadrant(quadrant) {
+        const safeInsets = getViewportSafeInsets();
+        const leftX = safeInsets.x;
+        const rightX = Math.max(safeInsets.x, window.innerWidth - safeInsets.x - state.charSize.w);
+        const topY = safeInsets.y;
+        const bottomY = Math.max(safeInsets.y, window.innerHeight - safeInsets.y - state.charSize.h);
+        const isRight = quadrant.endsWith('right');
+        const isBottom = quadrant.startsWith('bottom');
+        return {
+          x: isRight ? rightX : leftX,
+          y: isBottom ? bottomY : topY
+        };
+      }
+
+      function buildCharCandidatePositions(overlay = state.tourOverlay) {
+        const safeInsets = getViewportSafeInsets();
+        const leftX = safeInsets.x;
+        const rightX = Math.max(safeInsets.x, window.innerWidth - safeInsets.x - state.charSize.w);
+        const topY = safeInsets.y;
+        const bottomY = Math.max(safeInsets.y, window.innerHeight - safeInsets.y - state.charSize.h);
+        const centerX = clamp((window.innerWidth - state.charSize.w) / 2, leftX, rightX);
+        const centerY = clamp((window.innerHeight - state.charSize.h) / 2, topY, bottomY);
+        const targetRect = overlay && overlay.targetRect ? overlay.targetRect : null;
+        const targetCenter = getTargetCenter(targetRect);
+        const xOrder = targetCenter.x < (window.innerWidth / 2)
+          ? [rightX, centerX, leftX]
+          : [leftX, centerX, rightX];
+        const yOrder = targetCenter.y < (window.innerHeight / 2)
+          ? [bottomY, centerY, topY]
+          : [topY, centerY, bottomY];
+        const hints = getCurrentStepLayoutHints();
+        const positions = [];
+        const seen = new Set();
+        const pushUnique = (pos) => {
+          const key = `${Math.round(pos.x * 100)}:${Math.round(pos.y * 100)}`;
+          if (seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          positions.push(pos);
+        };
+
+        if (hints.slippyQuadrant) {
+          pushUnique(resolveCharPosForQuadrant(hints.slippyQuadrant));
+        }
+
+        for (const y of yOrder) {
+          for (const x of xOrder) {
+            pushUnique({ x, y });
+          }
+        }
+
+        return positions;
+      }
+
+      function chooseBetterSceneCandidate(currentBest, candidate) {
+        if (!candidate) {
+          return currentBest;
+        }
+        if (!currentBest) {
+          return candidate;
+        }
+        if (candidate.valid !== currentBest.valid) {
+          return candidate.valid ? candidate : currentBest;
+        }
+        if (candidate.valid && currentBest.valid && candidate.scenarioRank !== currentBest.scenarioRank) {
+          return candidate.scenarioRank < currentBest.scenarioRank ? candidate : currentBest;
+        }
+        if (candidate.score < currentBest.score) {
+          return candidate;
+        }
+        return currentBest;
+      }
+
+      function solveSceneLayoutAtCurrentScale(overlay = state.tourOverlay, options = {}) {
+        const charPositions = buildCharCandidatePositions(overlay);
+        let best = null;
+
+        for (const charPos of charPositions) {
+          const bubbleCandidate = solveBubbleLayoutForChar(charPos, overlay, options);
+          const charValid = isSlippyPlacementValid(charPos, overlay);
+          const score = scoreSlippyPlacement(charPos, overlay) + bubbleCandidate.score;
+          const candidate = {
+            charPos,
+            bubbleOffset: bubbleCandidate.bubbleOffset,
+            valid: charValid && bubbleCandidate.valid,
+            score,
+            scenario: bubbleCandidate.scenario,
+            scenarioRank: bubbleCandidate.scenarioRank,
+            scale: state.layoutScale
+          };
+          best = chooseBetterSceneCandidate(best, candidate);
+        }
+
+        return best || {
+          charPos: clampWithinViewport(baseState.charPos, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX),
+          bubbleOffset: getScaledBaseBubbleOffset(),
+          valid: false,
+          score: 99999,
+          scenario: 'anywhere',
+          scenarioRank: Number.POSITIVE_INFINITY,
+          scale: state.layoutScale
+        };
+      }
+
+      function buildScaleSearchOrder(startScale = 1, minScale = 0.5, step = 0.01) {
+        const scales = [];
+        for (let scale = startScale - step; scale >= (minScale - 0.0001); scale -= step) {
+          scales.push(Number(scale.toFixed(2)));
+        }
+        return scales;
+      }
+
+      function bubbleIntersectsSlippy(charPos, bubblePos) {
+        const bubbleHitRect = getBubbleInteriorRect(bubblePos);
+        return rectsIntersect(bubbleHitRect, getSlippyBubbleExclusionRect(charPos))
+          || capsuleIntersectsRect(getSlippyBubbleExclusionCapsule(charPos), bubbleHitRect);
+      }
+
+      function solveInsideHighlightFallback(overlay = state.tourOverlay) {
+        const sourceRect = overlay && (overlay.frameRect || overlay.targetRect)
+          ? (overlay.frameRect || overlay.targetRect)
+          : {
+              x: window.innerWidth * 0.18,
+              y: window.innerHeight * 0.18,
+              w: window.innerWidth * 0.64,
+              h: window.innerHeight * 0.64
+            };
+        const padding = scaleLocalPx(14);
+        const attempts = [
+          {
+            charPos: {
+              x: sourceRect.x + padding,
+              y: sourceRect.y + sourceRect.h - state.charSize.h - padding
+            },
+            bubblePos: {
+              x: sourceRect.x + sourceRect.w - state.bubbleSize.w - padding,
+              y: sourceRect.y + padding
+            }
+          },
+          {
+            charPos: {
+              x: sourceRect.x + sourceRect.w - state.charSize.w - padding,
+              y: sourceRect.y + sourceRect.h - state.charSize.h - padding
+            },
+            bubblePos: {
+              x: sourceRect.x + padding,
+              y: sourceRect.y + padding
+            }
+          },
+          {
+            charPos: {
+              x: sourceRect.x + ((sourceRect.w - state.charSize.w) / 2),
+              y: sourceRect.y + sourceRect.h - state.charSize.h - padding
+            },
+            bubblePos: {
+              x: sourceRect.x + ((sourceRect.w - state.bubbleSize.w) / 2),
+              y: sourceRect.y + padding
+            }
+          }
+        ];
+        let best = null;
+
+        for (const attempt of attempts) {
+          const charPos = clampWithinViewport(attempt.charPos, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          const bubblePos = clampWithinViewport(attempt.bubblePos, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          const overlap = bubbleIntersectsSlippy(charPos, bubblePos);
+          const candidate = {
+            charPos,
+            bubbleOffset: {
+              x: bubblePos.x - charPos.x,
+              y: bubblePos.y - charPos.y
+            },
+            valid: true,
+            score: overlap ? 62000 : 52000,
+            scenario: 'inside-highlight',
+            scenarioRank: 5,
+            scale: state.layoutScale
+          };
+          if (!overlap) {
+            return candidate;
+          }
+          best = chooseBetterSceneCandidate(best, candidate);
+        }
+
+        return best || {
+          charPos: clampWithinViewport(baseState.charPos, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX),
+          bubbleOffset: getScaledBaseBubbleOffset(),
+          valid: true,
+          score: 65000,
+          scenario: 'inside-highlight',
+          scenarioRank: 5,
+          scale: state.layoutScale
+          };
+      }
+
+      function shouldAllowInsideHighlightFallback(overlay = state.tourOverlay) {
+        const sourceRect = overlay && (overlay.targetRect || overlay.frameRect)
+          ? (overlay.targetRect || overlay.frameRect)
+          : null;
+        if (!sourceRect) {
+          return false;
+        }
+        const viewportArea = Math.max(1, window.innerWidth * window.innerHeight);
+        const sourceArea = Math.max(0, sourceRect.w) * Math.max(0, sourceRect.h);
+        const widthRatio = Math.max(0, sourceRect.w) / Math.max(1, window.innerWidth);
+        const heightRatio = Math.max(0, sourceRect.h) / Math.max(1, window.innerHeight);
+        const areaRatio = sourceArea / viewportArea;
+        return areaRatio >= 0.34 || widthRatio >= 0.72 || heightRatio >= 0.72;
+      }
+
+      function solveSceneLayout() {
+        const overlay = renderTourFocusOverlay(true);
+        const fullScaleCandidate = withLayoutScale(1, () => solveSceneLayoutAtCurrentScale(overlay, {
+          allowAnywhere: true
+        }));
+        let bestFallbackCandidate = fullScaleCandidate;
+        if (fullScaleCandidate.valid) {
+          syncLayoutScale(fullScaleCandidate.scale);
+          return fullScaleCandidate;
+        }
+
+        for (const scale of buildScaleSearchOrder(1, 0.5, 0.01)) {
+          const candidate = withLayoutScale(scale, () => solveSceneLayoutAtCurrentScale(overlay, {
+            allowAnywhere: false
+          }));
+          if (candidate.valid) {
+            syncLayoutScale(candidate.scale);
+            return candidate;
+          }
+          bestFallbackCandidate = chooseBetterSceneCandidate(bestFallbackCandidate, candidate);
+        }
+
+        for (const scale of buildScaleSearchOrder(1, 0.5, 0.01)) {
+          const candidate = withLayoutScale(scale, () => solveSceneLayoutAtCurrentScale(overlay, {
+            allowAnywhere: true
+          }));
+          if (candidate.valid) {
+            syncLayoutScale(candidate.scale);
+            return candidate;
+          }
+          bestFallbackCandidate = chooseBetterSceneCandidate(bestFallbackCandidate, candidate);
+        }
+
+        if (shouldAllowInsideHighlightFallback(overlay)) {
+          const fallback = withLayoutScale(0.5, () => solveInsideHighlightFallback(overlay));
+          syncLayoutScale(fallback.scale);
+          return fallback;
+        }
+
+        syncLayoutScale(bestFallbackCandidate.scale);
+        return bestFallbackCandidate;
+      }
+
+      function stopCharAnimation() {
+        state.charMotion.active = false;
+        state.charMotion.from = clonePos(state.charPos);
+        state.charMotion.to = clonePos(state.charPos);
+      }
+
+      function stopBubbleAnimation() {
+        state.bubbleMotion.active = false;
+        state.bubbleMotion.from = clonePos(state.bubblePos);
+        state.bubbleMotion.to = clonePos(state.bubblePos);
+      }
+
+      function startCharAnimation(targetPos, durationMs = SCRIPTED_MOVE_DURATION_MS) {
+        state.charMotion.active = true;
+        state.charMotion.startAt = getNowMs();
+        state.charMotion.durationMs = durationMs;
+        state.charMotion.from = clonePos(state.charPos);
+        state.charMotion.to = clonePos(targetPos);
+        state.charTargetPos = clonePos(targetPos);
+      }
+
+      function startBubbleAnimation(targetPos, durationMs = BUBBLE_RETURN_DURATION_MS) {
+        state.bubbleMotion.active = true;
+        state.bubbleMotion.startAt = getNowMs();
+        state.bubbleMotion.durationMs = durationMs;
+        state.bubbleMotion.from = clonePos(state.bubblePos);
+        state.bubbleMotion.to = clonePos(targetPos);
+      }
+
+      function easeOutCubic(t) {
+        const inverse = 1 - t;
+        return 1 - (inverse * inverse * inverse);
+      }
+
+      function clearPendingStepSolveTimer() {
+        if (pendingStepSolveTimer) {
+          window.clearTimeout(pendingStepSolveTimer);
+          pendingStepSolveTimer = 0;
+        }
+      }
+
+      function clearPendingScrollSolveTimer() {
+        if (pendingScrollSolveTimer) {
+          window.clearTimeout(pendingScrollSolveTimer);
+          pendingScrollSolveTimer = 0;
+        }
+      }
+
+      function schedulePendingStepSolve(delayMs = 0) {
+        clearPendingStepSolveTimer();
+        pendingStepSolveTimer = window.setTimeout(() => {
+          pendingStepSolveTimer = 0;
+          finalizePendingStepSolve();
+        }, Math.max(0, delayMs));
+      }
+
+      function scheduleScrollSolve(delayMs = 0) {
+        clearPendingScrollSolveTimer();
+        pendingScrollSolveTimer = window.setTimeout(() => {
+          pendingScrollSolveTimer = 0;
+          if (state.pendingStepSolve || state.dragPinnedSlippy || state.dragPinnedBubble) {
+            return;
+          }
+          applySolvedSceneLayout({ animateSlippy: true, durationMs: 260 });
+        }, Math.max(0, delayMs));
+      }
+
+      function clearInvalidReturn(kind) {
+        if (kind === 'slippy') {
+          if (invalidSlippyReturnTimer) {
+            window.clearTimeout(invalidSlippyReturnTimer);
+            invalidSlippyReturnTimer = 0;
+          }
+          state.invalidSlippyReturnAt = 0;
+        } else {
+          if (invalidBubbleReturnTimer) {
+            window.clearTimeout(invalidBubbleReturnTimer);
+            invalidBubbleReturnTimer = 0;
+          }
+          state.invalidBubbleReturnAt = 0;
+        }
+      }
+
+      function scheduleInvalidReturn(kind) {
+        clearInvalidReturn(kind);
+        const at = getNowMs() + INVALID_DROP_DELAY_MS;
+        if (kind === 'slippy') {
+          state.invalidSlippyReturnAt = at;
+          invalidSlippyReturnTimer = window.setTimeout(() => {
+            invalidSlippyReturnTimer = 0;
+            clearInvalidReturn('slippy');
+            applySolvedSceneLayout({ animateSlippy: true });
+          }, INVALID_DROP_DELAY_MS);
+        } else {
+          state.invalidBubbleReturnAt = at;
+          invalidBubbleReturnTimer = window.setTimeout(() => {
+            invalidBubbleReturnTimer = 0;
+            clearInvalidReturn('bubble');
+            applySolvedBubbleLayoutForCurrentSlippy({ animateBubble: true });
+          }, INVALID_DROP_DELAY_MS);
+        }
+      }
+
+      function applySolvedSceneLayout(options = {}) {
+        const layout = solveSceneLayout();
+        state.lastSolverLayout = {
+          charPos: clonePos(layout.charPos),
+          bubbleOffset: clonePos(layout.bubbleOffset),
+          scale: layout.scale
+        };
+        state.dragPinnedSlippy = false;
+        state.dragPinnedBubble = false;
+        clearInvalidReturn('slippy');
+        clearInvalidReturn('bubble');
+        stopBubbleAnimation();
+        if (options.animateSlippy) {
+          startCharAnimation(layout.charPos, options.durationMs || SCRIPTED_MOVE_DURATION_MS);
+        } else {
+          stopCharAnimation();
+          state.charPos = clonePos(layout.charPos);
+          state.charTargetPos = clonePos(layout.charPos);
+        }
+        state.bubbleOffset = clonePos(layout.bubbleOffset);
+        if (options.placeBubbleNow) {
+          state.bubblePos = getBubbleTargetPos(state.charPos, state.bubbleOffset);
+        }
+        requestOverlayRefresh();
+        return layout;
+      }
+
+      function applySolvedBubbleLayoutForCurrentSlippy(options = {}) {
+        const overlay = renderTourFocusOverlay(true);
+        const currentCharPos = clonePos(state.charPos);
+        const bubbleLayout = solveBubbleLayoutForChar(currentCharPos, overlay);
+        state.dragPinnedBubble = false;
+        clearInvalidReturn('bubble');
+        state.bubbleOffset = clonePos(bubbleLayout.bubbleOffset);
+        state.lastSolverLayout.bubbleOffset = clonePos(bubbleLayout.bubbleOffset);
+        state.lastSolverLayout.scale = state.layoutScale;
+        const bubbleTargetPos = getBubbleTargetPos(currentCharPos, state.bubbleOffset);
+        if (options.placeBubbleNow) {
+          stopBubbleAnimation();
+          state.bubblePos = bubbleTargetPos;
+        } else if (options.animateBubble) {
+          startBubbleAnimation(bubbleTargetPos, options.durationMs || BUBBLE_RETURN_DURATION_MS);
+        } else {
+          stopBubbleAnimation();
+        }
+        return bubbleLayout;
+      }
+
+      function getScrollMarginPx(step) {
+        const hints = step && step.layoutHints && typeof step.layoutHints === 'object' ? step.layoutHints : {};
+        const rawPct = Number(hints.scrollMarginPct);
+        const pct = Number.isFinite(rawPct) ? rawPct : 0.1;
+        return clamp(window.innerHeight * pct, 32, 120);
+      }
+
+      function getBubbleButtonsLabel() {
+        if (state.tourStepIndex >= (TOUR_STEPS.length - 1)) {
+          return 'Restart tour';
+        }
+        const nextStep = TOUR_STEPS[state.tourStepIndex + 1];
+        return nextStep ? `Next: ${nextStep.title}` : 'Next';
+      }
+
+      function getActiveBubbleButtons() {
+        if (state.mode !== 'speech') {
+          return [];
+        }
+        return [{
+          id: 'tour_next',
+          text: getBubbleButtonsLabel(),
+          action: state.tourStepIndex >= (TOUR_STEPS.length - 1) ? 'tour_restart' : 'tour_next',
+          x: Math.round(state.bubbleSize.w / 2),
+          y: state.bubbleSize.h - scaleLocalPx(62),
+          variant: 'primary',
+          centerX: true
+        }];
+      }
+
+      function scrollToTourTarget(step, behavior = 'smooth') {
+        const safeStep = step || getCurrentTourStep();
+        if (!safeStep) {
+          return false;
+        }
+        const targetNode = document.getElementById(safeStep.targetId);
+        if (!targetNode || !siteScroll) {
+          return false;
+        }
+        const scrollerRect = siteScroll.getBoundingClientRect();
+        const targetRect = targetNode.getBoundingClientRect();
+        const margin = getScrollMarginPx(safeStep);
+        const hints = getCurrentStepLayoutHints();
+        const targetTopInScroller = siteScroll.scrollTop + (targetRect.top - scrollerRect.top);
+        const targetBottomInScroller = targetTopInScroller + targetRect.height;
+        const currentVisibleTop = siteScroll.scrollTop + margin;
+        const currentVisibleBottom = siteScroll.scrollTop + scrollerRect.height - margin;
+        const fullyInsideBand = targetTopInScroller >= currentVisibleTop
+          && targetBottomInScroller <= currentVisibleBottom;
+        if (fullyInsideBand) {
+          return false;
+        }
+
+        let targetTop = siteScroll.scrollTop;
+        if (hints.scrollBias === 'top') {
+          targetTop = targetTopInScroller - margin;
+        } else if (hints.scrollBias === 'bottom') {
+          targetTop = targetBottomInScroller - scrollerRect.height + margin;
+        } else if (hints.scrollBias === 'center') {
+          targetTop = targetTopInScroller - ((scrollerRect.height - targetRect.height) / 2);
+        } else if (targetTopInScroller < currentVisibleTop) {
+          targetTop = targetTopInScroller - margin;
+        } else {
+          targetTop = targetBottomInScroller - scrollerRect.height + margin;
+        }
+
+        siteScroll.scrollTo({
+          top: Math.max(0, targetTop),
+          behavior
+        });
+        return true;
+      }
+
+      function finalizePendingStepSolve() {
+        if (!state.pendingStepSolve) {
+          return;
+        }
+        state.pendingStepSolve = false;
+        applySolvedSceneLayout({ animateSlippy: true, durationMs: SCRIPTED_MOVE_DURATION_MS });
+        applyLayout();
+      }
+
+      function applyTourStep(stepIndex, options = {}) {
+        const boundedIndex = clamp(stepIndex, 0, TOUR_STEPS.length - 1);
+        const step = TOUR_STEPS[boundedIndex];
+        state.tourStepIndex = boundedIndex;
+        state.text = step.text;
+        state.mode = 'speech';
+        state.buttons = getActiveBubbleButtons();
+        state.armDisplay.initialized = false;
+        bubbleTextInput.value = step.title;
+        modeSelect.value = state.mode;
+        state.pendingStepSolve = true;
+        state.dragPinnedSlippy = false;
+        state.dragPinnedBubble = false;
+        clearInvalidReturn('slippy');
+        clearInvalidReturn('bubble');
+        requestOverlayRefresh();
+        if (options.scroll !== false) {
+          const scrolled = scrollToTourTarget(step, options.behavior || 'smooth');
+          if (scrolled && options.behavior !== 'auto') {
+            schedulePendingStepSolve(140);
+          } else {
+            finalizePendingStepSolve();
+          }
+        } else {
+          finalizePendingStepSolve();
+        }
+        noteEyeActivity();
+      }
+
+      function restartTour(options = {}) {
+        applyTourStep(0, {
+          scroll: options.scroll !== false,
+          behavior: options.behavior || 'auto'
+        });
+        state.bee = createBeeState();
+        noteEyeActivity();
+      }
+
+      function advanceTourStep() {
+        const nextIndex = state.tourStepIndex >= (TOUR_STEPS.length - 1)
+          ? 0
+          : state.tourStepIndex + 1;
+        applyTourStep(nextIndex, { scroll: true, behavior: 'smooth' });
+      }
+
+      function scrollCurrentTargetIntoViewFromArrow() {
+        const currentStep = getCurrentTourStep();
+        if (!currentStep) {
+          return;
+        }
+        const overlay = renderTourFocusOverlay(true);
+        if (!overlay.arrowRect || overlay.arrowDirection === 'none') {
+          return;
+        }
+        state.pendingStepSolve = true;
+        state.dragPinnedSlippy = false;
+        state.dragPinnedBubble = false;
+        clearInvalidReturn('slippy');
+        clearInvalidReturn('bubble');
+        requestOverlayRefresh();
+        noteEyeActivity();
+        const scrolled = scrollToTourTarget(currentStep, 'smooth');
+        if (scrolled) {
+          schedulePendingStepSolve(140);
+        } else {
+          finalizePendingStepSolve();
+        }
+      }
+
+      function pointBubbleTarget() {
+        return {
+          x: state.bubblePos.x + (state.bubbleSize.w / 2),
+          y: state.bubblePos.y + (state.bubbleSize.h / 2)
+        };
+      }
+
+      function pointTourTarget() {
+        const node = getCurrentTourTargetNode();
+        if (!node) {
+          return pointBubbleTarget();
+        }
+        const rect = node.getBoundingClientRect();
+        return {
+          x: rect.left + (rect.width / 2),
+          y: rect.top + (rect.height / 2)
+        };
+      }
+
+      function pointBeeTarget() {
+        return {
+          x: state.bee.x,
+          y: state.bee.y
+        };
+      }
+
+      function isPointInsideRect(point, rect, padding = 0) {
+        return point.x >= (rect.x - padding)
+          && point.x <= (rect.x + rect.w + padding)
+          && point.y >= (rect.y - padding)
+          && point.y <= (rect.y + rect.h + padding);
+      }
+
+      function getSlippyHeadPoint() {
+        const localHeadX = scaleLocalPx((state.eyeRig.leftCx + state.eyeRig.rightCx) / 2);
+        const localHeadY = scaleLocalPx((state.eyeRig.leftCy + state.eyeRig.rightCy) / 2);
+        const mirroredHeadX = state.isMirrored
+          ? (state.charSize.w - localHeadX)
+          : localHeadX;
+        return {
+          x: state.charPos.x + mirroredHeadX,
+          y: state.charPos.y + localHeadY
+        };
+      }
+
+      function chooseBeeBumbleTarget() {
+        const margin = 72;
+        const minX = margin;
+        const maxX = Math.max(margin, window.innerWidth - margin);
+        const minY = margin;
+        const maxY = Math.max(margin, window.innerHeight - margin);
+        const panelRect = {
+          x: state.panelPos.x,
+          y: state.panelPos.y,
+          w: controlPanel.offsetWidth || 260,
+          h: controlPanel.offsetHeight || 230
+        };
+        let fallback = {
+          x: minX,
+          y: minY
+        };
+
+        for (let attempt = 0; attempt < 28; attempt += 1) {
+          const point = {
+            x: randomRange(minX, maxX),
+            y: randomRange(minY, maxY)
+          };
+
+          point.x = clamp(point.x, minX, maxX);
+          point.y = clamp(point.y, minY, maxY);
+          fallback = point;
+
+          if (!isPointInsideRect(point, panelRect, 40)) {
+            return point;
+          }
+        }
+
+        return fallback;
+      }
+
+      function clampBeeToViewport() {
+        const marginX = 38;
+        const marginY = 30;
+        state.bee.x = clamp(state.bee.x, marginX, Math.max(marginX, window.innerWidth - marginX));
+        state.bee.y = clamp(state.bee.y, marginY, Math.max(marginY, window.innerHeight - marginY));
+      }
+
+      function pickFarthestBeeCorner(origin) {
+        const margin = 54;
+        const corners = [
+          { x: margin, y: margin },
+          { x: Math.max(margin, window.innerWidth - margin), y: margin },
+          { x: margin, y: Math.max(margin, window.innerHeight - margin) },
+          { x: Math.max(margin, window.innerWidth - margin), y: Math.max(margin, window.innerHeight - margin) }
+        ];
+
+        return corners.reduce((furthest, corner) => {
+          const furthestDistance = Math.hypot(furthest.x - origin.x, furthest.y - origin.y);
+          const candidateDistance = Math.hypot(corner.x - origin.x, corner.y - origin.y);
+          return candidateDistance > furthestDistance ? corner : furthest;
+        });
+      }
+
+      function renderBee() {
+        bee.style.left = `${state.bee.x}px`;
+        bee.style.top = `${state.bee.y}px`;
+        bee.style.transform = `translate(-50%, -50%) rotate(${state.bee.angleDeg.toFixed(2)}deg)`;
+        bee.classList.toggle('bee-fleeing', state.bee.mode === 'flee');
+        document.documentElement.dataset.beeX = state.bee.x.toFixed(1);
+        document.documentElement.dataset.beeY = state.bee.y.toFixed(1);
+        document.documentElement.dataset.beeMode = state.bee.mode;
+        document.documentElement.dataset.beeStressed = String(Boolean(state.bee.stressed));
+      }
+
+      function syncSlippyBodyImage() {
+        if (state.stance !== 'pointer') {
+          return;
+        }
+        const isStressed = Boolean(state.bee && state.bee.stressed);
+        const nextSrc = isStressed ? assets.stressed : assets.pointer;
+        const currentSrc = slippyBase.getAttribute('src') || '';
+        if (!currentSrc.endsWith(nextSrc)) {
+          slippyBase.setAttribute('src', nextSrc);
+        }
+        document.documentElement.dataset.slippyPose = isStressed ? 'stressed' : 'show';
+      }
+
+      function syncForearmLayer(raiseForearm) {
+        const shouldRaise = Boolean(raiseForearm);
+        const currentParent = forearm.parentNode;
+        if (shouldRaise) {
+          if (currentParent !== slippyScene) {
+            slippyScene.appendChild(forearm);
+          }
+          forearm.style.zIndex = '6';
+        } else {
+          if (currentParent !== pointerRig) {
+            pointerRig.appendChild(forearm);
+          }
+          forearm.style.zIndex = '9';
+        }
+        document.documentElement.dataset.forearmLayer = shouldRaise ? 'front' : 'back';
+      }
+
+      function startBeeFlee(nowMs) {
+        const headPoint = getSlippyHeadPoint();
+        const corner = pickFarthestBeeCorner(headPoint);
+        const dx = corner.x - state.bee.x;
+        const dy = corner.y - state.bee.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const fleeSpeed = 17;
+        state.bee.mode = 'flee';
+        state.bee.targetX = corner.x;
+        state.bee.targetY = corner.y;
+        state.bee.vx = (dx / dist) * fleeSpeed;
+        state.bee.vy = (dy / dist) * fleeSpeed;
+        state.bee.approachStartedAt = 0;
+        state.bee.shooStartedAt = 0;
+        state.bee.shooUntil = 0;
+        state.bee.calmUntil = nowMs + BEE_POST_SHOO_STRESS_MS;
+      }
+
+      function startBeeApproach(nowMs) {
+        const headPoint = getSlippyHeadPoint();
+        const dx = state.bee.x - headPoint.x;
+        const dy = state.bee.y - headPoint.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        if (dist < BEE_ALERT_RADIUS_PX) {
+          const scale = BEE_ALERT_RADIUS_PX / dist;
+          state.bee.x = headPoint.x + (dx * scale);
+          state.bee.y = headPoint.y + (dy * scale);
+          clampBeeToViewport();
+        }
+        state.bee.mode = 'approach';
+        state.bee.approachStartedAt = nowMs;
+        state.bee.vx *= 0.45;
+        state.bee.vy *= 0.45;
+        state.bee.calmUntil = 0;
+      }
+
+      function startBeeShoo(nowMs) {
+        const headPoint = getSlippyHeadPoint();
+        const dx = state.bee.x - headPoint.x;
+        const dy = state.bee.y - headPoint.y;
+        state.bee.mode = 'shoo';
+        state.bee.approachStartedAt = 0;
+        state.bee.shooStartedAt = nowMs;
+        state.bee.shooUntil = nowMs + randomRange(2050, 2950);
+        state.bee.shooRadius = clamp(Math.hypot(dx, dy), 22, 44);
+        state.bee.shooBaseAngle = Math.atan2(dy || -1, dx || 1);
+        state.bee.shooPhase = randomRange(0, Math.PI * 2);
+        state.bee.targetX = state.bee.x;
+        state.bee.targetY = state.bee.y;
+        state.bee.vx *= 0.32;
+        state.bee.vy *= 0.32;
+        state.bee.calmUntil = 0;
+      }
+
+      function cancelBeeApproach(nowMs) {
+        const nextTarget = chooseBeeBumbleTarget();
+        state.bee.mode = 'bumble';
+        state.bee.approachStartedAt = 0;
+        state.bee.targetX = nextTarget.x;
+        state.bee.targetY = nextTarget.y;
+        state.bee.nextRetargetAt = nowMs + randomRange(520, 1350);
+        state.bee.calmUntil = 0;
+      }
+
+      function updateBee(nowMs) {
+        if (!state.bee) {
+          return false;
+        }
+
+        const headPoint = getSlippyHeadPoint();
+        const previousX = state.bee.x;
+        const previousY = state.bee.y;
+        const beeDistanceToHead = Math.hypot(state.bee.x - headPoint.x, state.bee.y - headPoint.y);
+
+        if (state.bee.mode === 'bumble' && beeDistanceToHead <= BEE_ALERT_RADIUS_PX) {
+          startBeeApproach(nowMs);
+        }
+
+        if (state.bee.mode === 'approach' && beeDistanceToHead >= BEE_DISENGAGE_RADIUS_PX) {
+          cancelBeeApproach(nowMs);
+        }
+
+        if (
+          state.bee.mode === 'approach'
+          && beeDistanceToHead <= 30
+          && (nowMs - state.bee.approachStartedAt) >= BEE_SHOO_TRIGGER_HOLD_MS
+        ) {
+          startBeeShoo(nowMs);
+        }
+
+        if (state.bee.mode === 'approach') {
+          const dx = headPoint.x - state.bee.x;
+          const dy = headPoint.y - state.bee.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          const desiredAngle = Math.atan2(dy, dx);
+          const desiredSpeed = clamp(dist * 0.01, 0.85, 1.9);
+          const easing = clamp((nowMs - state.bee.approachStartedAt) / 1200, 0.18, 1);
+          state.bee.vx = lerp(state.bee.vx, Math.cos(desiredAngle) * desiredSpeed, 0.08 + (easing * 0.08));
+          state.bee.vy = lerp(state.bee.vy, Math.sin(desiredAngle) * desiredSpeed, 0.08 + (easing * 0.08));
+        } else if (state.bee.mode === 'shoo') {
+          if (nowMs >= state.bee.shooUntil) {
+            startBeeFlee(nowMs);
+          } else {
+            const elapsed = nowMs - state.bee.shooStartedAt;
+            const sweep = (Math.sin((elapsed * 0.016) + state.bee.shooPhase) * 0.56)
+              + (Math.sin((elapsed * 0.031) + (state.bee.shooPhase * 0.7)) * 0.16);
+            const hoverAngle = state.bee.shooBaseAngle + sweep;
+            const hoverRadius = state.bee.shooRadius
+              + (Math.sin((elapsed * 0.023) + (state.bee.shooPhase * 1.3)) * 6.5)
+              + (Math.cos((elapsed * 0.049) + state.bee.shooPhase) * 2.5);
+            const hoverTargetX = headPoint.x + (Math.cos(hoverAngle) * hoverRadius);
+            const hoverTargetY = headPoint.y + (Math.sin(hoverAngle) * hoverRadius)
+              + (Math.sin((elapsed * 0.038) + (state.bee.shooPhase * 0.4)) * 5);
+            const dx = hoverTargetX - state.bee.x;
+            const dy = hoverTargetY - state.bee.y;
+            const dist = Math.max(1, Math.hypot(dx, dy));
+            const hoverSpeed = clamp(dist * 0.24, 3.2, 6.4);
+            state.bee.vx = lerp(state.bee.vx, (dx / dist) * hoverSpeed, 0.24);
+            state.bee.vy = lerp(state.bee.vy, (dy / dist) * hoverSpeed, 0.24);
+          }
+        } else if (state.bee.mode === 'flee') {
+          const dx = state.bee.targetX - state.bee.x;
+          const dy = state.bee.targetY - state.bee.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          const fleeSpeed = 17;
+          state.bee.vx = lerp(state.bee.vx, (dx / dist) * fleeSpeed, 0.24);
+          state.bee.vy = lerp(state.bee.vy, (dy / dist) * fleeSpeed, 0.24);
+          if (dist <= 26) {
+            const nextTarget = chooseBeeBumbleTarget();
+            state.bee.mode = 'bumble';
+            state.bee.targetX = nextTarget.x;
+            state.bee.targetY = nextTarget.y;
+            state.bee.nextRetargetAt = nowMs + randomRange(500, 1200);
+            state.bee.calmUntil = 0;
+          }
+        } else {
+          const dx = state.bee.targetX - state.bee.x;
+          const dy = state.bee.targetY - state.bee.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist <= 38 || nowMs >= state.bee.nextRetargetAt) {
+            const nextTarget = chooseBeeBumbleTarget();
+            state.bee.targetX = nextTarget.x;
+            state.bee.targetY = nextTarget.y;
+            state.bee.nextRetargetAt = nowMs + randomRange(520, 1350);
+          }
+
+          const desiredAngle = Math.atan2(state.bee.targetY - state.bee.y, state.bee.targetX - state.bee.x);
+          const desiredSpeed = clamp(dist * 0.018, 1.5, 4.3) * beeBumbleSpeedScale;
+          const wobbleX = Math.sin((nowMs / 105) + (state.bee.targetY * 0.01)) * 0.7 * beeBumbleSpeedScale;
+          const wobbleY = Math.cos((nowMs / 135) + (state.bee.targetX * 0.01)) * 0.55 * beeBumbleSpeedScale;
+          state.bee.vx = lerp(state.bee.vx, (Math.cos(desiredAngle) * desiredSpeed) + wobbleX, 0.1);
+          state.bee.vy = lerp(state.bee.vy, (Math.sin(desiredAngle) * desiredSpeed) + wobbleY, 0.1);
+        }
+
+        state.bee.x += state.bee.vx;
+        state.bee.y += state.bee.vy;
+        clampBeeToViewport();
+
+        state.bee.angleDeg = clamp((Math.atan2(state.bee.vy, state.bee.vx) * 180) / Math.PI, -70, 70);
+        if (state.eyeBehavior && Math.hypot(state.bee.x - previousX, state.bee.y - previousY) > 0.08) {
+          state.eyeBehavior.lastTargetMoveAt = nowMs;
+        }
+        state.bee.stressed = state.bee.mode === 'approach'
+          || state.bee.mode === 'shoo'
+          || (nowMs < (state.bee.calmUntil || 0))
+          || (state.bee.mode !== 'flee' && Math.hypot(state.bee.x - headPoint.x, state.bee.y - headPoint.y) <= 120);
+        syncSlippyBodyImage();
+        renderBee();
+        return true;
+      }
+
+      function isBeeInterruptingTour(nowMs = getNowMs()) {
+        return Boolean(state.bee && (
+          state.bee.mode === 'approach'
+          || state.bee.mode === 'shoo'
+          || nowMs < (state.bee.calmUntil || 0)
+        ));
+      }
+
+      function isBeeShooing(nowMs) {
+        return Boolean(state.bee && state.bee.mode === 'shoo' && nowMs < state.bee.shooUntil);
+      }
+
+      function calculateSmartTail() {
+        const W = state.bubbleSize.w;
+        const H = state.bubbleSize.h;
+        const CX = state.bubblePos.x + (W / 2);
+        const CY = state.bubblePos.y + (H / 2);
+        const RX = (W / 2) - 5;
+        const RY = (H / 2) - 5;
+
+        const hx = state.charPos.x + (state.charSize.w * 0.48);
+        const hy = state.charPos.y + (state.charSize.h * 0.45);
+        const hrx = (state.charSize.w * 0.28) + scaleLocalPx(state.tipOffset);
+        const hry = (state.charSize.h * 0.18) + scaleLocalPx(state.tipOffset);
+
+        let angle = Math.atan2(CY - hy, CX - hx);
+        const MAX_DOWN = 0.45;
+        if (angle > MAX_DOWN && angle <= Math.PI / 2) {
+          angle = MAX_DOWN;
+        } else if (angle > Math.PI / 2 && angle < Math.PI - MAX_DOWN) {
+          angle = Math.PI - MAX_DOWN;
+        }
+
+        const pTip = {
+          x: hx + (hrx * Math.cos(angle)),
+          y: hy + (hry * Math.sin(angle))
+        };
+
+        const speechTailSpread = 40 / 200;
+
+        const sampleQuadraticPoint = (start, control, end, t) => ({
+          x: (((1 - t) ** 2) * start.x) + (2 * (1 - t) * t * control.x) + ((t ** 2) * end.x),
+          y: (((1 - t) ** 2) * start.y) + (2 * (1 - t) * t * control.y) + ((t ** 2) * end.y)
+        });
+
+        const getEllipseOutsideValue = (point) => {
+          const dx = point.x - CX;
+          const dy = point.y - CY;
+          return ((dx * dx) / ((RX || 1) ** 2)) + ((dy * dy) / ((RY || 1) ** 2));
+        };
+
+        const getBubbleEdgePointForAngle = (candidateAngle) => {
+          const edgeR = (RX * RY) / Math.sqrt(((RY * Math.cos(candidateAngle)) ** 2) + ((RX * Math.sin(candidateAngle)) ** 2));
+          return {
+            angleRoot: candidateAngle,
+            pRoot: {
+              x: CX + (edgeR * Math.cos(candidateAngle)),
+              y: CY + (edgeR * Math.sin(candidateAngle))
+            }
+          };
+        };
+
+        const directAngleRoot = Math.atan2(pTip.y - CY, pTip.x - CX);
+        const preferredVerticalSign = Math.sign(pTip.y - CY) || 0;
+        const angleOffsets = [0];
+        for (const magnitude of [0.16, 0.3, 0.44, 0.58, 0.74, 0.92, 1.08]) {
+          angleOffsets.push(magnitude, -magnitude);
+        }
+
+        const minTailSpan = scaleLocalPx(132);
+        let bestRootCandidate = null;
+
+        for (const offset of angleOffsets) {
+          const candidate = getBubbleEdgePointForAngle(directAngleRoot + offset);
+          const candidateTailDx = pTip.x - candidate.pRoot.x;
+          const candidateTailDy = pTip.y - candidate.pRoot.y;
+          const candidateTailDist = Math.max(1, Math.hypot(candidateTailDx, candidateTailDy));
+          const outwardBias = clamp(candidateTailDist * 0.22, scaleLocalPx(20), scaleLocalPx(52));
+          const candidatePivot = {
+            x: ((candidate.pRoot.x + pTip.x) / 2) + ((candidateTailDx / candidateTailDist) * outwardBias) + scaleLocalPx(state.pivotOffset.x),
+            y: ((candidate.pRoot.y + pTip.y) / 2) + ((candidateTailDy / candidateTailDist) * outwardBias) + scaleLocalPx(state.pivotOffset.y)
+          };
+          const candidateR1 = {
+            x: CX + (RX * Math.cos(candidate.angleRoot - speechTailSpread)),
+            y: CY + (RY * Math.sin(candidate.angleRoot - speechTailSpread))
+          };
+          const candidateR2 = {
+            x: CX + (RX * Math.cos(candidate.angleRoot + speechTailSpread)),
+            y: CY + (RY * Math.sin(candidate.angleRoot + speechTailSpread))
+          };
+          let minEdgeOutsideValue = Number.POSITIVE_INFINITY;
+          for (const start of [candidateR1, candidateR2]) {
+            for (const t of [0.12, 0.24, 0.4, 0.58, 0.78]) {
+              const point = sampleQuadraticPoint(start, candidatePivot, pTip, t);
+              minEdgeOutsideValue = Math.min(minEdgeOutsideValue, getEllipseOutsideValue(point));
+            }
+          }
+
+          const outwardNormalX = Math.cos(candidate.angleRoot) / (RX || 1);
+          const outwardNormalY = Math.sin(candidate.angleRoot) / (RY || 1);
+          const outwardNormalLength = Math.max(0.0001, Math.hypot(outwardNormalX, outwardNormalY));
+          const outwardDot = ((candidateTailDx / candidateTailDist) * (outwardNormalX / outwardNormalLength))
+            + ((candidateTailDy / candidateTailDist) * (outwardNormalY / outwardNormalLength));
+
+          const verticalPenalty = preferredVerticalSign !== 0 && Math.sign(candidate.pRoot.y - CY) !== preferredVerticalSign ? 1 : 0;
+          const spanPenalty = Math.max(0, minTailSpan - candidateTailDist);
+          const intrusionPenalty = Math.max(0, 1.002 - minEdgeOutsideValue);
+          const outwardPenalty = Math.max(0, 0.24 - outwardDot);
+          const score = (intrusionPenalty * 200000)
+            + (spanPenalty * 1800)
+            + (outwardPenalty * 900)
+            + (verticalPenalty * 18)
+            + Math.abs(offset);
+
+          if (!bestRootCandidate || score < bestRootCandidate.score) {
+            bestRootCandidate = {
+              ...candidate,
+              pPivot: candidatePivot,
+              tailDx: candidateTailDx,
+              tailDy: candidateTailDy,
+              tailDist: candidateTailDist,
+              minEdgeOutsideValue,
+              score
+            };
+          }
+
+          if (intrusionPenalty <= 0 && spanPenalty <= 0 && outwardPenalty <= 0 && verticalPenalty === 0) {
+            break;
+          }
+        }
+
+        const angleRoot = bestRootCandidate ? bestRootCandidate.angleRoot : directAngleRoot;
+        const pRoot = bestRootCandidate
+          ? bestRootCandidate.pRoot
+          : getBubbleEdgePointForAngle(directAngleRoot).pRoot;
+        const fallbackTailDx = pTip.x - pRoot.x;
+        const fallbackTailDy = pTip.y - pRoot.y;
+        const fallbackTailDist = Math.max(1, Math.hypot(fallbackTailDx, fallbackTailDy));
+        const fallbackOutwardBias = clamp(fallbackTailDist * 0.22, scaleLocalPx(20), scaleLocalPx(52));
+        const pPivot = bestRootCandidate
+          ? bestRootCandidate.pPivot
+          : {
+              x: ((pRoot.x + pTip.x) / 2) + ((fallbackTailDx / fallbackTailDist) * fallbackOutwardBias) + scaleLocalPx(state.pivotOffset.x),
+              y: ((pRoot.y + pTip.y) / 2) + ((fallbackTailDy / fallbackTailDist) * fallbackOutwardBias) + scaleLocalPx(state.pivotOffset.y)
+            };
+
+        return { pTip, pPivot, pRoot, angleRoot, CX, CY, RX, RY, spread: speechTailSpread };
+      }
+
+      function syncTourSceneState() {
+        const currentStep = getCurrentTourStep();
+        const nextMode = isBeeInterruptingTour(getNowMs()) ? 'thought' : 'speech';
+        const nextText = nextMode === 'thought'
+          ? 'Gosh golly, I hate bees.'
+          : String(currentStep && currentStep.text || '');
+        const nextButtons = nextMode === 'thought' ? [] : getActiveBubbleButtons();
+        const nextStopLabel = nextMode === 'thought'
+          ? `${currentStep && currentStep.title ? currentStep.title : 'Tour stop'} interrupted`
+          : String(currentStep && currentStep.title || 'Tour stop');
+        const currentButtonsKey = JSON.stringify(Array.isArray(state.buttons) ? state.buttons : []);
+        const nextButtonsKey = JSON.stringify(nextButtons);
+        const changed = state.mode !== nextMode
+          || state.text !== nextText
+          || currentButtonsKey !== nextButtonsKey
+          || bubbleTextInput.value !== nextStopLabel
+          || modeSelect.value !== nextMode;
+
+        state.mode = nextMode;
+        state.text = nextText;
+        state.buttons = nextButtons;
+        bubbleTextInput.value = nextStopLabel;
+        modeSelect.value = nextMode;
+        return changed;
+      }
+
+      function renderBubble() {
+        syncTourSceneState();
+        const tail = calculateSmartTail();
+        tailInk.innerHTML = '';
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('filter', 'url(#tailShadow)');
+
+        const bg = '#ffffff';
+        const stroke = '#111827';
+
+        if (state.mode === 'speech') {
+          const spread = tail.spread || (40 / 200);
+          const r1 = {
+            x: tail.CX + (tail.RX * Math.cos(tail.angleRoot - spread)),
+            y: tail.CY + (tail.RY * Math.sin(tail.angleRoot - spread))
+          };
+          const r2 = {
+            x: tail.CX + (tail.RX * Math.cos(tail.angleRoot + spread)),
+            y: tail.CY + (tail.RY * Math.sin(tail.angleRoot + spread))
+          };
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', `M ${r1.x} ${r1.y} Q ${tail.pPivot.x} ${tail.pPivot.y} ${tail.pTip.x} ${tail.pTip.y} Q ${tail.pPivot.x} ${tail.pPivot.y} ${r2.x} ${r2.y} A ${tail.RX} ${tail.RY} 0 1 1 ${r1.x} ${r1.y}`);
+          path.setAttribute('fill', bg);
+          path.setAttribute('stroke', stroke);
+          path.setAttribute('stroke-width', '2.5');
+          path.setAttribute('stroke-linejoin', 'round');
+          path.setAttribute('stroke-linecap', 'round');
+          g.appendChild(path);
+        } else {
+          const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+          ellipse.setAttribute('cx', String(tail.CX));
+          ellipse.setAttribute('cy', String(tail.CY));
+          ellipse.setAttribute('rx', String(tail.RX));
+          ellipse.setAttribute('ry', String(tail.RY));
+          ellipse.setAttribute('fill', bg);
+          ellipse.setAttribute('stroke', stroke);
+          ellipse.setAttribute('stroke-width', '2.5');
+          g.appendChild(ellipse);
+
+          for (let i = 1; i <= 3; i += 1) {
+            const t = i / 4;
+            const tx = (((1 - t) ** 2) * tail.pRoot.x) + (2 * (1 - t) * t * tail.pPivot.x) + ((t ** 2) * tail.pTip.x);
+            const ty = (((1 - t) ** 2) * tail.pRoot.y) + (2 * (1 - t) * t * tail.pPivot.y) + ((t ** 2) * tail.pTip.y);
+            const r = (4 - i) * 11;
+            const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            c.setAttribute('cx', String(tx));
+            c.setAttribute('cy', String(ty));
+            c.setAttribute('r', String(r));
+            c.setAttribute('fill', bg);
+            c.setAttribute('stroke', stroke);
+            c.setAttribute('stroke-width', '2.5');
+            g.appendChild(c);
+          }
+        }
+
+        tailInk.appendChild(g);
+        const currentStep = getCurrentTourStep();
+        if (state.mode === 'thought') {
+          bubbleContent.innerHTML = `
+            <div class="bubbleCopy">
+              <p>${escapeHtml(state.text)}</p>
+            </div>
+          `;
+        } else {
+          bubbleContent.innerHTML = `
+            <div class="bubbleCopy">
+              <strong>${escapeHtml(currentStep && currentStep.title || 'Tour stop')}</strong>
+              <p>${escapeHtml(state.text)}</p>
+            </div>
+          `;
+        }
+
+        const nextButtons = Array.isArray(state.buttons) ? state.buttons : [];
+        const nextButtonsKey = JSON.stringify(nextButtons);
+        if (bubble.dataset.buttonsKey !== nextButtonsKey) {
+          bubble.dataset.buttonsKey = nextButtonsKey;
+          Array.from(bubble.querySelectorAll('.bubbleAction')).forEach((node) => node.remove());
+          for (const buttonConfig of nextButtons) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `bubbleAction${buttonConfig.variant === 'primary' ? ' primary' : ''}`;
+            button.textContent = String(buttonConfig.text || 'Next');
+            if (buttonConfig.centerX) {
+              button.style.left = `${Number(buttonConfig.x || 0)}px`;
+              button.style.setProperty('--bubble-action-shift-x', '-50%');
+            } else {
+              button.style.left = `${Number(buttonConfig.x || 0)}px`;
+            }
+            button.style.top = `${Number(buttonConfig.y || 0)}px`;
+            button.dataset.action = String(buttonConfig.action || '');
+            button.addEventListener('pointerdown', (event) => {
+              event.stopPropagation();
+            });
+            button.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const action = String(button.dataset.action || '');
+              if (action === 'tour_next') {
+                advanceTourStep();
+              } else if (action === 'tour_restart') {
+                restartTour({ scroll: true, behavior: 'smooth' });
+              }
+            });
+            bubble.appendChild(button);
+          }
+        }
+      }
+
+      function buildEyes() {
+        eyesSvg.innerHTML = `
+          <defs>
+            <radialGradient id="scleraGradient" cx="46%" cy="40%" r="68%">
+              <stop offset="0%" stop-color="#f8fafc" stop-opacity="0.98"></stop>
+              <stop offset="58%" stop-color="#f1f5f9" stop-opacity="0.95"></stop>
+              <stop offset="84%" stop-color="#dbe4ee" stop-opacity="0.9"></stop>
+              <stop offset="100%" stop-color="#c6d1dc" stop-opacity="0.72"></stop>
+            </radialGradient>
+            <linearGradient id="scleraDepthGradient" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#64748b" stop-opacity="0.26"></stop>
+              <stop offset="22%" stop-color="#94a3b8" stop-opacity="0.1"></stop>
+              <stop offset="55%" stop-color="#ffffff" stop-opacity="0.02"></stop>
+              <stop offset="100%" stop-color="#1e293b" stop-opacity="0.14"></stop>
+            </linearGradient>
+            <linearGradient id="pupilGradient" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#0b1220"></stop>
+              <stop offset="55%" stop-color="#162032"></stop>
+              <stop offset="100%" stop-color="#374151"></stop>
+            </linearGradient>
+            <radialGradient id="eyeHighlightGradient" cx="40%" cy="38%" r="65%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.82"></stop>
+              <stop offset="75%" stop-color="#ffffff" stop-opacity="0.24"></stop>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+            </radialGradient>
+            <clipPath id="eyeClip">
+              <ellipse id="eyeLeftClip"></ellipse>
+              <ellipse id="eyeRightClip"></ellipse>
+            </clipPath>
+          </defs>
+          <ellipse id="eyeLeft" fill="url(#scleraGradient)"></ellipse>
+          <ellipse id="eyeRight" fill="url(#scleraGradient)"></ellipse>
+          <ellipse id="eyeLeftDepth" fill="url(#scleraDepthGradient)"></ellipse>
+          <ellipse id="eyeRightDepth" fill="url(#scleraDepthGradient)"></ellipse>
+          <g clip-path="url(#eyeClip)">
+            <ellipse id="leftPupil" fill="url(#pupilGradient)"></ellipse>
+            <ellipse id="rightPupil" fill="url(#pupilGradient)"></ellipse>
+          </g>
+          <g clip-path="url(#eyeClip)">
+            <ellipse id="eyeLeftHighlight" fill="url(#eyeHighlightGradient)"></ellipse>
+            <ellipse id="eyeRightHighlight" fill="url(#eyeHighlightGradient)"></ellipse>
+          </g>
+          <g clip-path="url(#eyeClip)">
+            <rect id="eyeLeftLid" fill="#8ea9bb" opacity="0.96"></rect>
+            <rect id="eyeRightLid" fill="#8ea9bb" opacity="0.96"></rect>
+          </g>
+        `;
+
+        eyeNodes.leftClip = document.getElementById('eyeLeftClip');
+        eyeNodes.rightClip = document.getElementById('eyeRightClip');
+        eyeNodes.leftEye = document.getElementById('eyeLeft');
+        eyeNodes.rightEye = document.getElementById('eyeRight');
+        eyeNodes.leftDepth = document.getElementById('eyeLeftDepth');
+        eyeNodes.rightDepth = document.getElementById('eyeRightDepth');
+        eyeNodes.leftPupil = document.getElementById('leftPupil');
+        eyeNodes.rightPupil = document.getElementById('rightPupil');
+        eyeNodes.leftHighlight = document.getElementById('eyeLeftHighlight');
+        eyeNodes.rightHighlight = document.getElementById('eyeRightHighlight');
+        eyeNodes.leftLid = document.getElementById('eyeLeftLid');
+        eyeNodes.rightLid = document.getElementById('eyeRightLid');
+      }
+
+      function applyEyeNodeRotation(node, cx, cy, deg) {
+        if (!node) {
+          return;
+        }
+        const rotation = clamp(Number(deg) || 0, -35, 35);
+        if (Math.abs(rotation) < 0.001) {
+          node.removeAttribute('transform');
+          return;
+        }
+        node.setAttribute('transform', `rotate(${rotation.toFixed(3)} ${cx.toFixed(3)} ${cy.toFixed(3)})`);
+      }
+
+      function derivePupilSize(eyeRx, eyeRy, maxRx = null, maxRy = null) {
+        const rx = Math.max(5, Number(eyeRx) || 0);
+        const ry = Math.max(6, Number(eyeRy) || 0);
+        const resolvedMaxRx = maxRx == null ? Math.max(2.4, rx - 1.6) : Math.max(2.4, Number(maxRx) || 0);
+        const resolvedMaxRy = maxRy == null ? Math.max(2.2, ry - 1.6) : Math.max(2.2, Number(maxRy) || 0);
+        return {
+          rx: clamp(Math.max(2.4, rx * pupilScaleX), 2.4, resolvedMaxRx),
+          ry: clamp(Math.max(2.2, ry * pupilScaleY), 2.2, resolvedMaxRy)
+        };
+      }
+
+      function renderEyeRigReadout() {
+        const selectedLabel = state.selectedEye === 'right'
+          ? 'Right eye'
+          : (state.selectedEye === 'forearm' ? 'Forearm' : 'Left eye');
+        eyeRigReadout.textContent = `Selected: ${selectedLabel} | L x ${state.eyeRig.leftCx.toFixed(1)}, y ${state.eyeRig.leftCy.toFixed(1)}, rx ${state.eyeRig.leftRx.toFixed(1)}, ry ${state.eyeRig.leftRy.toFixed(1)} | R x ${state.eyeRig.rightCx.toFixed(1)}, y ${state.eyeRig.rightCy.toFixed(1)}, rx ${state.eyeRig.rightRx.toFixed(1)}, ry ${state.eyeRig.rightRy.toFixed(1)} | Forearm dx ${state.pointerRig.forearmNudgeX.toFixed(1)}, dy ${state.pointerRig.forearmNudgeY.toFixed(1)}`;
+        document.documentElement.dataset.selectedEye = state.selectedEye;
+        document.documentElement.dataset.eyeLeftX = state.eyeRig.leftCx.toFixed(1);
+        document.documentElement.dataset.eyeLeftY = state.eyeRig.leftCy.toFixed(1);
+        document.documentElement.dataset.eyeLeftRx = state.eyeRig.leftRx.toFixed(1);
+        document.documentElement.dataset.eyeLeftRy = state.eyeRig.leftRy.toFixed(1);
+        document.documentElement.dataset.eyeRightX = state.eyeRig.rightCx.toFixed(1);
+        document.documentElement.dataset.eyeRightY = state.eyeRig.rightCy.toFixed(1);
+        document.documentElement.dataset.eyeRightRx = state.eyeRig.rightRx.toFixed(1);
+        document.documentElement.dataset.eyeRightRy = state.eyeRig.rightRy.toFixed(1);
+        document.documentElement.dataset.forearmNudgeX = state.pointerRig.forearmNudgeX.toFixed(1);
+        document.documentElement.dataset.forearmNudgeY = state.pointerRig.forearmNudgeY.toFixed(1);
+      }
+
+      function applyEyeRigCalibration() {
+        const spacing = Math.max(0, Number(state.calibration.eyeSpacing) || 0);
+        const halfSpacing = spacing / 2;
+        const centerX = Number(state.calibration.eyeCenterX) || ((state.eyeRig.leftCx + state.eyeRig.rightCx) / 2);
+        const centerY = Number(state.calibration.eyeCenterY) || state.eyeRig.cy;
+        const leftXBias = Number(state.eyeRig.leftXBias) || 0;
+        const rightXBias = Number(state.eyeRig.rightXBias) || 0;
+        const leftYBias = Number(state.eyeRig.leftYBias) || 0;
+        const rightYBias = Number(state.eyeRig.rightYBias) || 0;
+        const leftCx = (centerX - halfSpacing) + leftXBias;
+        const rightCx = (centerX + halfSpacing) + rightXBias;
+        const leftCy = centerY + leftYBias;
+        const rightCy = centerY + rightYBias;
+        const leftRotateDeg = clamp(Number(state.eyeRig.leftRotateDeg) || 0, -35, 35);
+        const rightRotateDeg = clamp(Number(state.eyeRig.rightRotateDeg) || 0, -35, 35);
+        const leftRx = Math.max(5, Number(state.eyeRig.leftRx ?? state.eyeRig.rx) || 0);
+        const rightRx = Math.max(5, Number(state.eyeRig.rightRx ?? state.eyeRig.rx) || 0);
+        const leftRy = Math.max(6, Number(state.eyeRig.leftRy ?? state.eyeRig.ry) || 0);
+        const rightRy = Math.max(6, Number(state.eyeRig.rightRy ?? state.eyeRig.ry) || 0);
+        const sharedPupil = derivePupilSize(
+          (leftRx + rightRx) / 2,
+          (leftRy + rightRy) / 2,
+          Math.min(leftRx, rightRx) - 1.6,
+          Math.min(leftRy, rightRy) - 1.6
+        );
+
+        state.eyeRig.leftCx = leftCx;
+        state.eyeRig.rightCx = rightCx;
+        state.eyeRig.leftCy = leftCy;
+        state.eyeRig.rightCy = rightCy;
+        state.eyeRig.cy = centerY;
+        state.eyeRig.leftXBias = leftXBias;
+        state.eyeRig.rightXBias = rightXBias;
+        state.eyeRig.leftYBias = leftYBias;
+        state.eyeRig.rightYBias = rightYBias;
+        state.eyeRig.leftRx = leftRx;
+        state.eyeRig.rightRx = rightRx;
+        state.eyeRig.leftRy = leftRy;
+        state.eyeRig.rightRy = rightRy;
+        state.eyeRig.leftRotateDeg = leftRotateDeg;
+        state.eyeRig.rightRotateDeg = rightRotateDeg;
+        state.eyeRig.leftPupilRx = sharedPupil.rx;
+        state.eyeRig.leftPupilRy = sharedPupil.ry;
+        state.eyeRig.rightPupilRx = sharedPupil.rx;
+        state.eyeRig.rightPupilRy = sharedPupil.ry;
+
+        [
+          [eyeNodes.leftClip, leftCx, leftCy, leftRx, leftRy, leftRotateDeg],
+          [eyeNodes.rightClip, rightCx, rightCy, rightRx, rightRy, rightRotateDeg],
+          [eyeNodes.leftEye, leftCx, leftCy, leftRx, leftRy, leftRotateDeg],
+          [eyeNodes.rightEye, rightCx, rightCy, rightRx, rightRy, rightRotateDeg],
+          [eyeNodes.leftDepth, leftCx, leftCy, leftRx, leftRy, leftRotateDeg],
+          [eyeNodes.rightDepth, rightCx, rightCy, rightRx, rightRy, rightRotateDeg]
+        ].forEach(([node, cx, nodeCy, nodeRx, nodeRy, rotation]) => {
+          node.setAttribute('cx', String(cx));
+          node.setAttribute('cy', String(nodeCy));
+          node.setAttribute('rx', String(nodeRx));
+          node.setAttribute('ry', String(nodeRy));
+          applyEyeNodeRotation(node, cx, nodeCy, rotation);
+        });
+
+        eyeNodes.leftPupil.setAttribute('rx', String(sharedPupil.rx));
+        eyeNodes.leftPupil.setAttribute('ry', String(sharedPupil.ry));
+        eyeNodes.rightPupil.setAttribute('rx', String(sharedPupil.rx));
+        eyeNodes.rightPupil.setAttribute('ry', String(sharedPupil.ry));
+        applyEyeNodeRotation(eyeNodes.leftPupil, leftCx, leftCy, leftRotateDeg);
+        applyEyeNodeRotation(eyeNodes.rightPupil, rightCx, rightCy, rightRotateDeg);
+
+        const leftHighlightRx = Math.max(2.1, leftRx * 0.26);
+        const leftHighlightRy = Math.max(1.8, leftRy * 0.22);
+        const rightHighlightRx = Math.max(2.1, rightRx * 0.26);
+        const rightHighlightRy = Math.max(1.8, rightRy * 0.22);
+        eyeNodes.leftHighlight.setAttribute('cx', String(leftCx - (leftRx * 0.3)));
+        eyeNodes.leftHighlight.setAttribute('cy', String(leftCy - (leftRy * 0.3)));
+        eyeNodes.leftHighlight.setAttribute('rx', String(leftHighlightRx));
+        eyeNodes.leftHighlight.setAttribute('ry', String(leftHighlightRy));
+        eyeNodes.rightHighlight.setAttribute('cx', String(rightCx - (rightRx * 0.3)));
+        eyeNodes.rightHighlight.setAttribute('cy', String(rightCy - (rightRy * 0.3)));
+        eyeNodes.rightHighlight.setAttribute('rx', String(rightHighlightRx));
+        eyeNodes.rightHighlight.setAttribute('ry', String(rightHighlightRy));
+        applyEyeNodeRotation(eyeNodes.leftHighlight, leftCx, leftCy, leftRotateDeg);
+        applyEyeNodeRotation(eyeNodes.rightHighlight, rightCx, rightCy, rightRotateDeg);
+
+        const blink = clamp(Number(state.eyeBehavior && state.eyeBehavior.blinkProgress) || 0, 0, 1);
+        const leftLidHeight = (leftRy * 2) + 6;
+        const leftLidY = (leftCy - leftRy - 3) - leftLidHeight + (leftLidHeight * blink);
+        const leftLidWidth = (leftRx * 2) + 5;
+        const rightLidHeight = (rightRy * 2) + 6;
+        const rightLidY = (rightCy - rightRy - 3) - rightLidHeight + (rightLidHeight * blink);
+        const rightLidWidth = (rightRx * 2) + 5;
+        eyeNodes.leftLid.setAttribute('x', String(leftCx - leftRx - 2.5));
+        eyeNodes.leftLid.setAttribute('y', String(leftLidY));
+        eyeNodes.leftLid.setAttribute('width', String(leftLidWidth));
+        eyeNodes.leftLid.setAttribute('height', String(leftLidHeight));
+        eyeNodes.rightLid.setAttribute('x', String(rightCx - rightRx - 2.5));
+        eyeNodes.rightLid.setAttribute('y', String(rightLidY));
+        eyeNodes.rightLid.setAttribute('width', String(rightLidWidth));
+        eyeNodes.rightLid.setAttribute('height', String(rightLidHeight));
+        applyEyeNodeRotation(eyeNodes.leftLid, leftCx, leftCy, leftRotateDeg);
+        applyEyeNodeRotation(eyeNodes.rightLid, rightCx, rightCy, rightRotateDeg);
+        renderEyeRigReadout();
+      }
+
+      function updateEyeBehavior(nowMs) {
+        const eyeBehavior = state.eyeBehavior;
+        if (!eyeBehavior) {
+          return false;
+        }
+
+        let changed = false;
+        const idle = (nowMs - eyeBehavior.lastTargetMoveAt) >= eyeBehavior.idleThresholdMs;
+
+        if (nowMs >= eyeBehavior.nextSaccadeAt) {
+          const maxAmplitude = idle ? eyeBehavior.maxIdleSaccadePx : eyeBehavior.maxActiveSaccadePx;
+          const minAmplitude = idle ? 1.3 : 0.6;
+          const amplitude = randomRange(minAmplitude, maxAmplitude);
+          eyeBehavior.targetOffsetX = randomRange(-amplitude, amplitude);
+          eyeBehavior.targetOffsetY = randomRange(-(amplitude * 0.72), amplitude * 0.72);
+          eyeBehavior.nextSaccadeAt = nowMs + randomRange(idle ? 850 : 1200, idle ? 2200 : 3200);
+        }
+
+        const lerpFactor = idle ? 0.23 : 0.16;
+        const nextOffsetX = lerp(eyeBehavior.offsetX, eyeBehavior.targetOffsetX, lerpFactor);
+        const nextOffsetY = lerp(eyeBehavior.offsetY, eyeBehavior.targetOffsetY, lerpFactor);
+        if (Math.abs(nextOffsetX - eyeBehavior.offsetX) > 0.01 || Math.abs(nextOffsetY - eyeBehavior.offsetY) > 0.01) {
+          eyeBehavior.offsetX = nextOffsetX;
+          eyeBehavior.offsetY = nextOffsetY;
+          changed = true;
+        }
+
+        if (!eyeBehavior.blinking && nowMs >= eyeBehavior.nextBlinkAt) {
+          eyeBehavior.blinking = true;
+          eyeBehavior.blinkStartAt = nowMs;
+          eyeBehavior.blinkDurationMs = randomRange(120, 190);
+          changed = true;
+        }
+
+        if (eyeBehavior.blinking) {
+          const elapsed = nowMs - eyeBehavior.blinkStartAt;
+          const progress = clamp(elapsed / Math.max(60, eyeBehavior.blinkDurationMs), 0, 1);
+          const blinkValue = Math.sin(progress * Math.PI);
+          if (Math.abs(blinkValue - eyeBehavior.blinkProgress) > 0.01) {
+            eyeBehavior.blinkProgress = blinkValue;
+            changed = true;
+          }
+          if (progress >= 1) {
+            eyeBehavior.blinking = false;
+            if (eyeBehavior.blinkProgress !== 0) {
+              eyeBehavior.blinkProgress = 0;
+              changed = true;
+            }
+            eyeBehavior.nextBlinkAt = nowMs + randomRange(2200, 6200);
+          }
+        }
+
+        return changed;
+      }
+
+      function updatePupilForEye(eye, pupilNode, targetX, targetY) {
+        const intensity = Number(state.eyeIntensity);
+        const pupilRx = Math.max(2, Number(eye.pupilRx ?? state.eyeRig.leftPupilRx ?? state.eyeRig.pupilRx) || 0);
+        const pupilRy = Math.max(2, Number(eye.pupilRy ?? state.eyeRig.leftPupilRy ?? state.eyeRig.pupilRy) || 0);
+        pupilNode.setAttribute('rx', String(pupilRx));
+        pupilNode.setAttribute('ry', String(pupilRy));
+
+        const rotationRad = ((eye.rotateDeg || 0) * Math.PI) / 180;
+        const cos = Math.cos(rotationRad);
+        const sin = Math.sin(rotationRad);
+        const vx = targetX - eye.cx;
+        const vy = targetY - eye.cy;
+        const localVx = (cos * vx) + (sin * vy);
+        const localVy = (-sin * vx) + (cos * vy);
+        const dist = Math.sqrt((localVx * localVx) + (localVy * localVy));
+        const angle = Math.atan2(localVy, localVx);
+
+        const maxTravel = Math.min(10, dist / 8) * intensity;
+        let ox = Math.cos(angle) * maxTravel;
+        let oy = Math.sin(angle) * maxTravel;
+
+        const maxX = Math.max(0, eye.rx - pupilRx - 0.35);
+        const maxY = Math.max(0, eye.ry - pupilRy - 0.35);
+        const normalizer = Math.sqrt(((ox * ox) / ((maxX || 1) ** 2)) + ((oy * oy) / ((maxY || 1) ** 2)));
+        if (normalizer > 1) {
+          ox /= normalizer;
+          oy /= normalizer;
+        }
+
+        const rotatedOx = (cos * ox) - (sin * oy);
+        const rotatedOy = (sin * ox) + (cos * oy);
+        pupilNode.setAttribute('cx', String(eye.cx + rotatedOx));
+        pupilNode.setAttribute('cy', String(eye.cy + rotatedOy));
+      }
+
+      function updateSlippyPuppet() {
+        const nowMs = getNowMs();
+        const localScale = Math.max(0.0001, Number(state.layoutScale) || 1);
+        const bubbleTarget = pointBubbleTarget();
+        const tourTarget = pointTourTarget();
+        const beeTarget = pointBeeTarget();
+        const beeInterrupting = isBeeInterruptingTour(nowMs);
+        const tourTargetRawX = (tourTarget.x - state.charPos.x) / localScale;
+        const tourTargetRawY = (tourTarget.y - state.charPos.y) / localScale;
+        const beeTargetRawX = (beeTarget.x - state.charPos.x) / localScale;
+        const beeTargetRawY = (beeTarget.y - state.charPos.y) / localScale;
+        const centerX = baseState.charSize.w / 2;
+        const flipDeadzonePx = 8;
+        let isFacingLeft = Boolean(state.isMirrored);
+        if (tourTargetRawX > (centerX + flipDeadzonePx)) {
+          isFacingLeft = true;
+        } else if (tourTargetRawX < (centerX - flipDeadzonePx)) {
+          isFacingLeft = false;
+        }
+        state.isMirrored = isFacingLeft;
+        slippyScene.style.transform = getSlippySceneTransform(isFacingLeft, state.layoutScale);
+
+        const eyeOffsetX = Number(state.eyeBehavior && state.eyeBehavior.offsetX) || 0;
+        const eyeOffsetY = Number(state.eyeBehavior && state.eyeBehavior.offsetY) || 0;
+        const defaultEyeTargetRawX = beeInterrupting ? beeTargetRawX : tourTargetRawX;
+        const defaultEyeTargetRawY = beeInterrupting ? beeTargetRawY : tourTargetRawY;
+        const eyeTargetX = (isFacingLeft ? (baseState.charSize.w - defaultEyeTargetRawX) : defaultEyeTargetRawX) + eyeOffsetX;
+        const eyeTargetY = defaultEyeTargetRawY + eyeOffsetY;
+        const shooing = isBeeShooing(nowMs);
+        let armTargetX = isFacingLeft ? (baseState.charSize.w - tourTargetRawX) : tourTargetRawX;
+        let armTargetY = tourTargetRawY;
+
+        if (shooing) {
+          const shooPhase = Number(state.bee && state.bee.shooPhase) || 0;
+          const blendedWave = (Math.sin((nowMs * 0.034) + shooPhase) * 0.62)
+            + (Math.sin((nowMs * 0.067) + (shooPhase * 1.9)) * 0.26)
+            + (Math.sin((nowMs * 0.119) + (shooPhase * 0.4)) * 0.12);
+          const waveAngleDeg = -52 + (clamp(blendedWave, -1, 1) * 27);
+          const waveReach = 84
+            + (((Math.sin((nowMs * 0.043) + (shooPhase * 0.8)) + 1) * 0.5) * 15)
+            + (Math.sin((nowMs * 0.095) + (shooPhase * 1.4)) * 3);
+          const waveAngle = (waveAngleDeg * Math.PI) / 180;
+          armTargetX = state.pointerRig.shoulderX + (Math.cos(waveAngle) * waveReach);
+          armTargetY = state.pointerRig.shoulderY + (Math.sin(waveAngle) * waveReach);
+        }
+
+        if (state.stance !== 'pointer') {
+          syncForearmLayer(false);
+          pointerRig.style.display = 'none';
+          forearm.style.display = 'none';
+        } else {
+          syncForearmLayer(shooing);
+          pointerRig.style.display = 'block';
+          forearm.style.display = 'block';
+          const rig = state.pointerRig;
+          const sx = rig.shoulderX;
+          const sy = rig.shoulderY;
+          const L1 = rig.upperArmLength;
+          const L2 = rig.forearmLength;
+          const dx = armTargetX - sx;
+          const dy = armTargetY - sy;
+          const dist = Math.max(0.0001, Math.sqrt((dx * dx) + (dy * dy)));
+          const minReach = Math.abs(L1 - L2) + 1;
+          const maxElbowInteriorRad = (rig.maxElbowInteriorDeg * Math.PI) / 180;
+          const maxReachByElbowLimit = Math.sqrt(Math.max(1, (L1 * L1) + (L2 * L2) - (2 * L1 * L2 * Math.cos(maxElbowInteriorRad))));
+          const maxReach = Math.min(L1 + L2 - 1, maxReachByElbowLimit);
+          const reachableDist = clamp(dist, minReach, maxReach);
+          const baseAngle = Math.atan2(dy, dx);
+          const shoulderOffset = Math.acos(clamp((((L1 * L1) + (reachableDist * reachableDist) - (L2 * L2)) / (2 * L1 * reachableDist)), -1, 1));
+          const upperWorldAngle = baseAngle + (rig.bendDirection * shoulderOffset);
+          const elbowWorldX = sx + (Math.cos(upperWorldAngle) * L1);
+          const elbowWorldY = sy + (Math.sin(upperWorldAngle) * L1);
+          const foreWorldAngle = Math.atan2(armTargetY - elbowWorldY, armTargetX - elbowWorldX);
+          const upperRotateDeg = ((upperWorldAngle - ((rig.upperNeutralDeg * Math.PI) / 180)) * 180) / Math.PI;
+          const forearmRotateDeg = ((foreWorldAngle - ((rig.forearmNeutralDeg * Math.PI) / 180)) * 180) / Math.PI;
+
+          if (!state.armDisplay.initialized) {
+            state.armDisplay.initialized = true;
+            state.armDisplay.upperRotateDeg = upperRotateDeg;
+            state.armDisplay.forearmRotateDeg = forearmRotateDeg;
+          }
+
+          const upperDisplayRotateDeg = stabilizeAngleDegrees(state.armDisplay.upperRotateDeg, upperRotateDeg);
+          const forearmDisplayRotateDeg = stabilizeAngleDegrees(state.armDisplay.forearmRotateDeg, forearmRotateDeg);
+          state.armDisplay.upperRotateDeg = upperDisplayRotateDeg;
+          state.armDisplay.forearmRotateDeg = forearmDisplayRotateDeg;
+
+          upperArm.style.left = `${(rig.shoulderX - rig.shoulderOriginX).toFixed(3)}px`;
+          upperArm.style.top = `${(rig.shoulderY - rig.shoulderOriginY).toFixed(3)}px`;
+          upperArm.style.transform = `rotate(${upperDisplayRotateDeg.toFixed(3)}deg)`;
+          forearm.style.left = `${(elbowWorldX + rig.elbowOffsetX + rig.forearmNudgeX - rig.elbowOriginX).toFixed(3)}px`;
+          forearm.style.top = `${(elbowWorldY + rig.elbowOffsetY + rig.forearmNudgeY - rig.elbowOriginY).toFixed(3)}px`;
+          forearm.style.transform = `rotate(${forearmDisplayRotateDeg.toFixed(3)}deg)`;
+        }
+
+        applyEyeRigCalibration();
+        updatePupilForEye({
+          cx: state.eyeRig.leftCx,
+          cy: state.eyeRig.leftCy,
+          rx: state.eyeRig.leftRx,
+          ry: state.eyeRig.leftRy,
+          pupilRx: state.eyeRig.leftPupilRx,
+          pupilRy: state.eyeRig.leftPupilRy,
+          rotateDeg: state.eyeRig.leftRotateDeg
+        }, eyeNodes.leftPupil, eyeTargetX, eyeTargetY);
+        updatePupilForEye({
+          cx: state.eyeRig.rightCx,
+          cy: state.eyeRig.rightCy,
+          rx: state.eyeRig.rightRx,
+          ry: state.eyeRig.rightRy,
+          pupilRx: state.eyeRig.rightPupilRx,
+          pupilRy: state.eyeRig.rightPupilRy,
+          rotateDeg: state.eyeRig.rightRotateDeg
+        }, eyeNodes.rightPupil, eyeTargetX, eyeTargetY);
+      }
+
+      function updateSceneMotion(nowMs) {
+        const dt = clamp(nowMs - lastMotionTickMs, 0, 64);
+        lastMotionTickMs = nowMs;
+
+        if (state.invalidSlippyReturnAt && nowMs >= state.invalidSlippyReturnAt) {
+          clearInvalidReturn('slippy');
+          applySolvedSceneLayout({ animateSlippy: true });
+        }
+
+        if (state.invalidBubbleReturnAt && nowMs >= state.invalidBubbleReturnAt) {
+          clearInvalidReturn('bubble');
+          applySolvedBubbleLayoutForCurrentSlippy({ animateBubble: true });
+        }
+
+        if (state.charMotion.active) {
+          const duration = Math.max(1, state.charMotion.durationMs);
+          const progress = clamp((nowMs - state.charMotion.startAt) / duration, 0, 1);
+          const eased = easeOutCubic(progress);
+          state.charPos.x = lerp(state.charMotion.from.x, state.charMotion.to.x, eased);
+          state.charPos.y = lerp(state.charMotion.from.y, state.charMotion.to.y, eased);
+          if (progress >= 1) {
+            state.charPos = clonePos(state.charMotion.to);
+            stopCharAnimation();
+          }
+        }
+
+        if (!currentDrag || currentDrag.kind !== 'bubble') {
+          if (state.bubbleMotion.active) {
+            const duration = Math.max(1, state.bubbleMotion.durationMs);
+            const progress = clamp((nowMs - state.bubbleMotion.startAt) / duration, 0, 1);
+            const eased = easeOutCubic(progress);
+            state.bubblePos.x = lerp(state.bubbleMotion.from.x, state.bubbleMotion.to.x, eased);
+            state.bubblePos.y = lerp(state.bubbleMotion.from.y, state.bubbleMotion.to.y, eased);
+            if (progress >= 1) {
+              state.bubblePos = clonePos(state.bubbleMotion.to);
+              stopBubbleAnimation();
+            }
+          } else {
+            const targetPos = getBubbleTargetPos(state.charPos, state.bubbleOffset);
+            const followAmount = 1 - Math.exp(-(dt || 16) / BUBBLE_FOLLOW_TAU_MS);
+            state.bubblePos.x = lerp(state.bubblePos.x, targetPos.x, followAmount);
+            state.bubblePos.y = lerp(state.bubblePos.y, targetPos.y, followAmount);
+            if (Math.abs(state.bubblePos.x - targetPos.x) < 0.25) {
+              state.bubblePos.x = targetPos.x;
+            }
+            if (Math.abs(state.bubblePos.y - targetPos.y) < 0.25) {
+              state.bubblePos.y = targetPos.y;
+            }
+          }
+        }
+      }
+
+      function tickEyes() {
+        const nowMs = getNowMs();
+        updateSceneMotion(nowMs);
+        updateBee(nowMs);
+        syncTourSceneState();
+        updateEyeBehavior(nowMs);
+        applyLayout();
+        eyeAnimationFrame = window.requestAnimationFrame(tickEyes);
+      }
+
+      function clampWithinViewport(pos, size, margin) {
+        const maxX = Math.max(margin, window.innerWidth - size.w - margin);
+        const maxY = Math.max(margin, window.innerHeight - size.h - margin);
+        return {
+          x: clamp(pos.x, margin, maxX),
+          y: clamp(pos.y, margin, maxY)
+        };
+      }
+
+      function applyLayout() {
+        syncPanelVisibility();
+        const panelSize = { w: controlPanel.offsetWidth || 260, h: controlPanel.offsetHeight || 230 };
+        const clampedPanel = clampWithinViewport(state.panelPos, panelSize, 8);
+        state.panelPos.x = clampedPanel.x;
+        state.panelPos.y = clampedPanel.y;
+
+        const clampedSlippy = clampWithinViewport(state.charPos, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX);
+        state.charPos.x = clampedSlippy.x;
+        state.charPos.y = clampedSlippy.y;
+        if (!state.charMotion.active && (!currentDrag || currentDrag.kind !== 'slippy')) {
+          state.charTargetPos = clonePos(state.charPos);
+        }
+
+        const clampedBubble = clampWithinViewport(state.bubblePos, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+        state.bubblePos.x = clampedBubble.x;
+        state.bubblePos.y = clampedBubble.y;
+
+        const slippyHitboxRect = getSlippyBubbleExclusionRect(state.charPos);
+        setDebugRectNode(slippyHitbox, slippyHitboxRect, {
+          visible: Boolean(state.debugVisuals.slippyRect),
+          borderRadius: '42px'
+        });
+        const slippyCapsuleRect = getSlippyBubbleExclusionCapsule(state.charPos);
+        setDebugRectNode(slippyCapsule, slippyCapsuleRect, {
+          visible: Boolean(state.debugVisuals.slippyCapsule),
+          borderRadius: `${Math.round(slippyCapsuleRect.radius)}px`
+        });
+
+        slippy.style.width = `${state.charSize.w}px`;
+        slippy.style.height = `${state.charSize.h}px`;
+        slippy.style.setProperty('--slippy-scale', state.layoutScale.toFixed(4));
+        slippyScene.style.transform = getSlippySceneTransform(state.isMirrored, state.layoutScale);
+        bubble.style.width = `${state.bubbleSize.w}px`;
+        bubble.style.height = `${state.bubbleSize.h}px`;
+        bubble.style.setProperty('--bubble-scale', state.layoutScale.toFixed(4));
+        setAbsolutePosition(bubble, state.bubblePos);
+        setAbsolutePosition(slippy, state.charPos);
+        setAbsolutePosition(controlPanel, state.panelPos);
+        stageBubbleSvg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+        renderBubble();
+        renderTourFocusOverlay();
+        renderAttentionSightline();
+        renderBee();
+        syncSlippyBodyImage();
+        updateSlippyPuppet();
+      }
+
+      function setStance(stance) {
+        state.stance = stance;
+        if (stance === 'pointer') {
+          syncSlippyBodyImage();
+          bubble.style.display = 'block';
+        } else if (stance === 'confirm') {
+          slippyBase.src = assets.confirm;
+          bubble.style.display = 'block';
+        } else {
+          slippyBase.src = assets.thumbs;
+          bubble.style.display = 'block';
+        }
+      }
+
+      function resetLayout() {
+        clearPendingStepSolveTimer();
+        state.panelPos.x = getDefaultPanelX();
+        state.panelPos.y = baseState.panelPos.y;
+        state.panelMinimized = baseState.panelMinimized;
+        state.eyeIntensity = 1;
+        state.isMirrored = false;
+        state.armDisplay.initialized = false;
+        state.selectedEye = baseState.selectedEye;
+        state.dragPinnedSlippy = false;
+        state.dragPinnedBubble = false;
+        state.pendingStepSolve = false;
+        state.overlayDirty = true;
+        clearInvalidReturn('slippy');
+        clearInvalidReturn('bubble');
+        stopBubbleAnimation();
+        syncLayoutScale(baseState.layoutScale || 1);
+        Object.assign(state.eyeRig, structuredClone(baseState.eyeRig));
+        Object.assign(state.calibration, structuredClone(baseState.calibration));
+        state.eyeBehavior = createEyeBehavior();
+        state.bee = createBeeState();
+        stopCharAnimation();
+        siteScroll.scrollTo({ top: 0, behavior: 'auto' });
+        setStance('pointer');
+        eyeIntensity.value = String(state.eyeIntensity);
+        eyeValue.textContent = `${state.eyeIntensity.toFixed(1)}x`;
+        state.tourStepIndex = 0;
+        state.text = TOUR_STEPS[0].text;
+        state.mode = 'speech';
+        state.buttons = getActiveBubbleButtons();
+        bubbleTextInput.value = TOUR_STEPS[0].title;
+        modeSelect.value = state.mode;
+        applySolvedSceneLayout({ animateSlippy: false, placeBubbleNow: true });
+        applyLayout();
+      }
+
+      function applyFunPreset() {
+        clearPendingStepSolveTimer();
+        state.armDisplay.initialized = false;
+        state.selectedEye = baseState.selectedEye;
+        state.panelMinimized = baseState.panelMinimized;
+        state.dragPinnedSlippy = false;
+        state.dragPinnedBubble = false;
+        clearInvalidReturn('slippy');
+        clearInvalidReturn('bubble');
+        stopBubbleAnimation();
+        syncLayoutScale(baseState.layoutScale || 1);
+        state.eyeBehavior = createEyeBehavior();
+        state.bee = createBeeState();
+        setStance('pointer');
+        eyeIntensity.value = String(state.eyeIntensity);
+        eyeValue.textContent = `${state.eyeIntensity.toFixed(1)}x`;
+        applyTourStep(0, { scroll: true, behavior: 'smooth' });
+        applyLayout();
+      }
+
+      function beginDrag(event, kind) {
+        if (event.button !== 0) {
+          return;
+        }
+        const sourceMap = {
+          bubble: state.bubblePos,
+          slippy: state.charPos,
+          panel: state.panelPos
+        };
+        currentDrag = {
+          kind,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          originX: sourceMap[kind].x,
+          originY: sourceMap[kind].y
+        };
+        if (kind === 'slippy') {
+          clearInvalidReturn('slippy');
+          stopCharAnimation();
+        } else if (kind === 'bubble') {
+          clearInvalidReturn('bubble');
+          stopBubbleAnimation();
+        }
+        document.body.classList.add('dragging');
+        if (event.currentTarget && typeof event.currentTarget.setPointerCapture === 'function') {
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch (_err) {
+            // Synthetic pointer events used during debugging do not create an active pointer stream.
+          }
+        }
+        event.preventDefault();
+      }
+
+      function onPointerMove(event) {
+        if (!currentDrag || event.pointerId !== currentDrag.pointerId) {
+          return;
+        }
+        const dx = event.clientX - currentDrag.startX;
+        const dy = event.clientY - currentDrag.startY;
+        const next = { x: currentDrag.originX + dx, y: currentDrag.originY + dy };
+        if (currentDrag.kind === 'bubble') {
+          const clampedBubble = clampWithinViewport(next, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          state.bubblePos.x = clampedBubble.x;
+          state.bubblePos.y = clampedBubble.y;
+          state.bubbleOffset.x = clampedBubble.x - state.charPos.x;
+          state.bubbleOffset.y = clampedBubble.y - state.charPos.y;
+        } else if (currentDrag.kind === 'slippy') {
+          const clampedSlippy = clampWithinViewport(next, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          state.charPos.x = clampedSlippy.x;
+          state.charPos.y = clampedSlippy.y;
+          state.charTargetPos = clonePos(clampedSlippy);
+        } else {
+          if (panelBarInteraction) {
+            const distance = Math.hypot(event.clientX - panelBarInteraction.startX, event.clientY - panelBarInteraction.startY);
+            if (distance > 6) {
+              panelBarInteraction.moved = true;
+            }
+          }
+          Object.assign(state.panelPos, next);
+        }
+        applyLayout();
+      }
+
+      function endDrag(event) {
+        if (!currentDrag || event.pointerId !== currentDrag.pointerId) {
+          return;
+        }
+        if (event.type === 'pointerup' && currentDrag.kind === 'panel' && panelBarInteraction && panelBarInteraction.pointerId === event.pointerId && !panelBarInteraction.moved) {
+          state.panelMinimized = !state.panelMinimized;
+          syncPanelVisibility();
+          applyLayout();
+        } else if (currentDrag.kind === 'bubble') {
+          const overlay = renderTourFocusOverlay(true);
+          const bubbleOffset = {
+            x: state.bubblePos.x - state.charPos.x,
+            y: state.bubblePos.y - state.charPos.y
+          };
+          state.bubbleOffset = clonePos(bubbleOffset);
+          if (isBubblePlacementValid(state.charPos, bubbleOffset, overlay)) {
+            state.dragPinnedBubble = true;
+            clearInvalidReturn('bubble');
+          } else {
+            state.dragPinnedBubble = false;
+            scheduleInvalidReturn('bubble');
+          }
+        } else if (currentDrag.kind === 'slippy') {
+          const overlay = renderTourFocusOverlay(true);
+          if (isSlippyPlacementValid(state.charPos, overlay)) {
+            state.dragPinnedSlippy = true;
+            clearInvalidReturn('slippy');
+            if (isBubblePlacementValid(state.charPos, state.bubbleOffset, overlay)) {
+              clearInvalidReturn('bubble');
+            } else {
+              state.dragPinnedBubble = false;
+              scheduleInvalidReturn('bubble');
+            }
+          } else {
+            state.dragPinnedSlippy = false;
+            scheduleInvalidReturn('slippy');
+            state.dragPinnedBubble = false;
+            clearInvalidReturn('bubble');
+          }
+        }
+        document.body.classList.remove('dragging');
+        currentDrag = null;
+        panelBarInteraction = null;
+      }
+
+      function handleResize() {
+        requestOverlayRefresh();
+        if (!state.dragPinnedSlippy && !state.dragPinnedBubble && !currentDrag) {
+          applySolvedSceneLayout({ animateSlippy: false });
+        } else {
+          const clampedSlippy = clampWithinViewport(state.charPos, state.charSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          state.charPos = clonePos(clampedSlippy);
+          state.charTargetPos = clonePos(clampedSlippy);
+          state.bubblePos = clampWithinViewport(state.bubblePos, state.bubbleSize, LAYOUT_VIEWPORT_MARGIN_PX);
+          state.bubbleOffset = {
+            x: state.bubblePos.x - state.charPos.x,
+            y: state.bubblePos.y - state.charPos.y
+          };
+          const overlay = renderTourFocusOverlay(true);
+          if (!isSlippyPlacementValid(state.charPos, overlay)) {
+            scheduleInvalidReturn('slippy');
+          }
+          if (!isBubblePlacementValid(state.charPos, state.bubbleOffset, overlay)) {
+            scheduleInvalidReturn('bubble');
+          }
+        }
+        applyLayout();
+      }
+
+      function onKeyDown(event) {
+        if (event.metaKey || event.ctrlKey || event.altKey) {
+          return;
+        }
+
+        const targetTag = event.target && event.target.tagName ? event.target.tagName.toUpperCase() : '';
+        if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(targetTag)) {
+          return;
+        }
+
+        if (event.key === '1') {
+          state.selectedEye = 'left';
+          event.preventDefault();
+          renderEyeRigReadout();
+          return;
+        }
+        if (event.key === '2') {
+          state.selectedEye = 'right';
+          event.preventDefault();
+          renderEyeRigReadout();
+          return;
+        }
+        if (event.key === '3') {
+          state.selectedEye = 'forearm';
+          event.preventDefault();
+          renderEyeRigReadout();
+          return;
+        }
+        if (!event.key || !event.key.startsWith('Arrow')) {
+          return;
+        }
+
+        if (state.selectedEye === 'forearm') {
+          let changed = false;
+          if (event.key === 'ArrowLeft') {
+            state.pointerRig.forearmNudgeX -= 1;
+            changed = true;
+          } else if (event.key === 'ArrowRight') {
+            state.pointerRig.forearmNudgeX += 1;
+            changed = true;
+          } else if (event.key === 'ArrowUp') {
+            state.pointerRig.forearmNudgeY -= 1;
+            changed = true;
+          } else if (event.key === 'ArrowDown') {
+            state.pointerRig.forearmNudgeY += 1;
+            changed = true;
+          }
+
+          if (!changed) {
+            return;
+          }
+
+          event.preventDefault();
+          noteEyeActivity();
+          updateSlippyPuppet();
+          return;
+        }
+
+        const selectedEye = state.selectedEye === 'right' ? 'right' : 'left';
+        const xBiasKey = selectedEye === 'right' ? 'rightXBias' : 'leftXBias';
+        const yBiasKey = selectedEye === 'right' ? 'rightYBias' : 'leftYBias';
+        const rxKey = selectedEye === 'right' ? 'rightRx' : 'leftRx';
+        const ryKey = selectedEye === 'right' ? 'rightRy' : 'leftRy';
+        const derivedPupil = derivePupilSize(state.eyeRig[rxKey], state.eyeRig[ryKey]);
+
+        let changed = false;
+        if (event.shiftKey) {
+          if (event.key === 'ArrowLeft') {
+            state.eyeRig[rxKey] = Math.max(derivedPupil.rx + 2.4, state.eyeRig[rxKey] - 1);
+            changed = true;
+          } else if (event.key === 'ArrowRight') {
+            state.eyeRig[rxKey] += 1;
+            changed = true;
+          } else if (event.key === 'ArrowUp') {
+            state.eyeRig[ryKey] = Math.max(derivedPupil.ry + 2.4, state.eyeRig[ryKey] - 1);
+            changed = true;
+          } else if (event.key === 'ArrowDown') {
+            state.eyeRig[ryKey] += 1;
+            changed = true;
+          }
+        } else {
+          if (event.key === 'ArrowLeft') {
+            state.eyeRig[xBiasKey] -= 1;
+            changed = true;
+          } else if (event.key === 'ArrowRight') {
+            state.eyeRig[xBiasKey] += 1;
+            changed = true;
+          } else if (event.key === 'ArrowUp') {
+            state.eyeRig[yBiasKey] -= 1;
+            changed = true;
+          } else if (event.key === 'ArrowDown') {
+            state.eyeRig[yBiasKey] += 1;
+            changed = true;
+          }
+        }
+
+        if (!changed) {
+          return;
+        }
+
+        event.preventDefault();
+        noteEyeActivity();
+        updateSlippyPuppet();
+      }
+
+      document.querySelector('#slippyDragHotspot').addEventListener('pointerdown', (event) => beginDrag(event, 'slippy'));
+      bubble.addEventListener('pointerdown', (event) => {
+        if (event.target && typeof event.target.closest === 'function' && event.target.closest('.bubbleAction')) {
+          return;
+        }
+        beginDrag(event, 'bubble');
+      });
+      panelBar.addEventListener('pointerdown', (event) => {
+        panelBarInteraction = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          moved: false
+        };
+        beginDrag(event, 'panel');
+      });
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', endDrag);
+      window.addEventListener('pointercancel', endDrag);
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('resize', handleResize);
+        siteScroll.addEventListener('scroll', () => {
+          noteEyeActivity();
+          requestOverlayRefresh();
+          if (state.pendingStepSolve) {
+            schedulePendingStepSolve(140);
+          } else {
+            scheduleScrollSolve(140);
+          }
+        }, { passive: true });
+
+      bubble.addEventListener('click', (event) => {
+        const actionNode = event.target && typeof event.target.closest === 'function'
+          ? event.target.closest('.bubbleAction')
+          : null;
+        if (!actionNode) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const action = String(actionNode.dataset.action || '');
+        if (action === 'tour_next') {
+          advanceTourStep();
+        } else if (action === 'tour_restart') {
+          restartTour({ scroll: true, behavior: 'smooth' });
+        }
+      });
+
+      eyeIntensity.addEventListener('input', () => {
+        state.eyeIntensity = Number(eyeIntensity.value);
+        eyeValue.textContent = `${state.eyeIntensity.toFixed(1)}x`;
+        noteEyeActivity();
+        updateSlippyPuppet();
+      });
+
+      [
+        [toggleSlippyHitbox, 'slippyRect'],
+        [toggleSlippyCapsule, 'slippyCapsule'],
+        [toggleSightline, 'sightline'],
+        [toggleSightlineCorridor, 'sightlineCorridor'],
+        [toggleOverlayFramePad, 'overlayFramePad'],
+        [toggleOverlayArrowPad, 'overlayArrowPad']
+      ].forEach(([input, key]) => {
+        input.addEventListener('change', () => {
+          state.debugVisuals[key] = Boolean(input.checked);
+          applyLayout();
+        });
+      });
+
+      resetBtn.addEventListener('click', resetLayout);
+      presetBtn.addEventListener('click', applyFunPreset);
+      tourTargetArrow.addEventListener('click', (event) => {
+        event.preventDefault();
+        scrollCurrentTargetIntoViewFromArrow();
+      });
+      copyCodexAttachBtn.addEventListener('click', () => {
+        void copyCodexAttachHook();
+      });
+
+      buildEyes();
+      applyEyeRigCalibration();
+      syncDebugControls();
+      state.panelPos.x = getDefaultPanelX();
+      window.__slippyDemoTest = {
+        getSnapshot() {
+          return {
+            charPos: { ...state.charPos },
+            bubblePos: { ...state.bubblePos },
+            panelPos: { ...state.panelPos },
+            tourStepIndex: state.tourStepIndex,
+            mode: state.mode,
+            isMirrored: state.isMirrored,
+            eyeIntensity: state.eyeIntensity,
+            text: state.text,
+            debugVisuals: { ...state.debugVisuals },
+            codexTabId: state.codexDebug.tabId
+          };
+        },
+        setBubblePos(x, y) {
+          state.bubblePos.x = Number(x);
+          state.bubblePos.y = Number(y);
+          state.bubbleOffset.x = Number(x) - state.charPos.x;
+          state.bubbleOffset.y = Number(y) - state.charPos.y;
+          state.dragPinnedBubble = true;
+          applyLayout();
+        },
+        setSlippyPos(x, y) {
+          state.charPos.x = Number(x);
+          state.charPos.y = Number(y);
+          state.charTargetPos = clonePos(state.charPos);
+          state.dragPinnedSlippy = true;
+          applyLayout();
+        },
+        setMode(mode) {
+          state.mode = mode === 'thought' ? 'thought' : 'speech';
+          modeSelect.value = state.mode;
+          renderBubble();
+        },
+        setTourStep(index) {
+          applyTourStep(Number(index) || 0, { scroll: false });
+        },
+        getEyeRig() {
+          return {
+            selectedEye: state.selectedEye,
+            eyeCenterX: state.calibration.eyeCenterX,
+            eyeCenterY: state.calibration.eyeCenterY,
+            eyeSpacing: state.calibration.eyeSpacing,
+            leftCx: state.eyeRig.leftCx,
+            leftCy: state.eyeRig.leftCy,
+            leftRx: state.eyeRig.leftRx,
+            leftRy: state.eyeRig.leftRy,
+            rightCx: state.eyeRig.rightCx,
+            rightCy: state.eyeRig.rightCy,
+            rightRx: state.eyeRig.rightRx,
+            rightRy: state.eyeRig.rightRy,
+            leftXBias: state.eyeRig.leftXBias,
+            leftYBias: state.eyeRig.leftYBias,
+            rightXBias: state.eyeRig.rightXBias,
+            rightYBias: state.eyeRig.rightYBias,
+            forearmNudgeX: state.pointerRig.forearmNudgeX,
+            forearmNudgeY: state.pointerRig.forearmNudgeY,
+            leftPupilRx: state.eyeRig.leftPupilRx,
+            leftPupilRy: state.eyeRig.leftPupilRy,
+            rightPupilRx: state.eyeRig.rightPupilRx,
+            rightPupilRy: state.eyeRig.rightPupilRy
+          };
+        },
+        markCodexTab() {
+          const nextId = generateCodexTabId();
+          state.codexDebug.tabId = applyCodexDebugMarker(nextId);
+          syncDebugControls();
+          return state.codexDebug.tabId;
+        },
+        getSolverDiagnostics() {
+          const overlay = renderTourFocusOverlay(true);
+          const scales = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+          return {
+            currentStep: getCurrentTourStep() ? getCurrentTourStep().id : null,
+            overlay,
+            current: {
+              charPos: { ...state.charPos },
+              bubblePos: { ...state.bubblePos },
+              layoutScale: state.layoutScale
+            },
+            fullScale: withLayoutScale(1, () => solveSceneLayoutAtCurrentScale(overlay, {
+              allowAnywhere: true
+            })),
+            scaledTop4: scales.map((scale) => withLayoutScale(scale, () => ({
+              scale,
+              candidate: solveSceneLayoutAtCurrentScale(overlay, {
+                allowAnywhere: false
+              })
+            }))),
+            scaledAnywhere: scales.map((scale) => withLayoutScale(scale, () => ({
+              scale,
+              candidate: solveSceneLayoutAtCurrentScale(overlay, {
+                allowAnywhere: true
+              })
+            })))
+          };
+        }
+      };
+      resetLayout();
+      eyeAnimationFrame = window.requestAnimationFrame(tickEyes);
+      window.__slippyDemoReady = true;
+      document.documentElement.dataset.demoReady = 'true';
+      document.documentElement.dataset.demoErrors = String(window.__slippyDemoErrors.length);
+    })();
+  </script>
+</body>
+</html>

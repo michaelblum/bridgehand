@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="300" viewBox="0 0 460 300" fill="none">
+  <defs>
+    <filter id="tshadow" x="0" y="0" width="460" height="300" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <ellipse filter="url(#tshadow)" cx="230" cy="130" rx="206" ry="102" fill="#fff" stroke="#111827" stroke-width="4"/>
+  <circle cx="126" cy="228" r="20" fill="#fff" stroke="#111827" stroke-width="4"/>
+  <circle cx="98" cy="262" r="12" fill="#fff" stroke="#111827" stroke-width="4"/>
+  <path d="M76 86C114 59 170 44 230 44C290 44 346 59 384 86" stroke="#dbeafe" stroke-width="3" stroke-linecap="round"/>
+</svg>

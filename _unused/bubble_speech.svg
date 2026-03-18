@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="300" viewBox="0 0 460 300" fill="none">
+  <defs>
+    <filter id="bshadow" x="0" y="0" width="460" height="300" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <path filter="url(#bshadow)" d="M42 24H418C432.359 24 444 35.6406 444 50V190C444 204.359 432.359 216 418 216H220L151 266L167 216H42C27.6406 216 16 204.359 16 190V50C16 35.6406 27.6406 24 42 24Z" fill="#fff" stroke="#111827" stroke-width="4"/>
+  <path d="M36 60H423" stroke="#dbeafe" stroke-width="2"/>
+  <path d="M36 82H423" stroke="#f1f5f9" stroke-width="2"/>
+</svg>
