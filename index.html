@@ -727,10 +727,22 @@
         drop-shadow(0 18px 32px rgba(18, 34, 52, 0.14));
     }
 
-    #bubble.dock-mini {
+    #bubble.bubble-hidden {
       opacity: 0;
-      transform: scale(0.16);
+      transform: scale(0);
       pointer-events: none;
+    }
+
+    #tailInk {
+      transform-box: view-box;
+      transition:
+        opacity 260ms ease,
+        transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #tailInk.bubble-hidden {
+      opacity: 0;
+      transform: scale(0);
     }
 
     #bubble::after {
@@ -1931,11 +1943,22 @@
       }
 
       function isSlippyTransitioning() {
-        return state.dockState === 'launching' || state.dockState === 'dismissing';
+        return state.dockState !== 'docked' && state.dockState !== 'active';
       }
 
       function shouldShowActiveSlippyScene() {
         return state.dockState !== 'docked';
+      }
+
+      function shouldShowBubbleScene() {
+        return state.dockState !== 'docked';
+      }
+
+      function shouldCollapseBubble() {
+        return state.dockState === 'launching-slippy'
+          || state.dockState === 'hiding-bubble'
+          || state.dockState === 'dismissing-slippy'
+          || state.dockState === 'docked';
       }
 
       function getDockedCharPos() {
@@ -1956,7 +1979,7 @@
 
       function syncDockUi() {
         const docked = isSlippyDocked();
-        const dismissing = state.dockState === 'dismissing';
+        const dismissing = state.dockState === 'hiding-bubble' || state.dockState === 'dismissing-slippy';
         slippyDockTitle.textContent = docked ? 'Slippy' : 'Hide Slippy';
         slippyDockHint.textContent = docked
           ? 'Wake him up'
@@ -1966,7 +1989,7 @@
       }
 
       function syncPanelVisibility() {
-        const showPanel = shouldShowActiveSlippyScene();
+        const showPanel = state.dockState === 'active';
         controlPanel.style.display = showPanel ? 'block' : 'none';
         controlPanel.classList.toggle('panel-minimized', Boolean(state.panelMinimized));
         document.documentElement.dataset.panelMinimized = String(Boolean(state.panelMinimized));
@@ -2194,7 +2217,7 @@
       }
 
       function renderTourFocusOverlay(force = false) {
-        if (isSlippyDocked() || state.dockState === 'dismissing') {
+        if (isSlippyDocked() || state.dockState === 'dismissing-slippy' || state.dockState === 'hiding-bubble') {
           state.tourOverlay = {
             frameRect: null,
             arrowRect: null,
@@ -3978,13 +4001,17 @@
 
       function renderBubble() {
         syncTourSceneState();
-        if (!shouldShowActiveSlippyScene()) {
+        if (!shouldShowBubbleScene()) {
           tailInk.innerHTML = '';
           bubbleContent.innerHTML = '';
           Array.from(bubble.querySelectorAll('.bubbleAction')).forEach((node) => node.remove());
           return;
         }
         const tail = calculateSmartTail();
+        const tailOriginX = tail.pTip.x - state.bubblePos.x;
+        const tailOriginY = tail.pTip.y - state.bubblePos.y;
+        bubble.style.transformOrigin = `${tailOriginX.toFixed(3)}px ${tailOriginY.toFixed(3)}px`;
+        tailInk.style.transformOrigin = `${tail.pTip.x.toFixed(3)}px ${tail.pTip.y.toFixed(3)}px`;
         tailInk.innerHTML = '';
 
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -4605,11 +4632,13 @@
         });
 
         const showScene = shouldShowActiveSlippyScene();
+        const showBubble = shouldShowBubbleScene();
         slippy.style.display = showScene ? 'block' : 'none';
-        bubble.style.display = showScene ? 'block' : 'none';
-        stageBubbleSvg.style.display = showScene ? 'block' : 'none';
-        slippy.classList.toggle('dock-mini', state.dockState === 'launching' || state.dockState === 'dismissing');
-        bubble.classList.toggle('dock-mini', state.dockState === 'launching' || state.dockState === 'dismissing');
+        bubble.style.display = showBubble ? 'block' : 'none';
+        stageBubbleSvg.style.display = showBubble ? 'block' : 'none';
+        slippy.classList.toggle('dock-mini', state.dockState === 'launching-slippy' || state.dockState === 'dismissing-slippy');
+        bubble.classList.toggle('bubble-hidden', shouldCollapseBubble());
+        tailInk.classList.toggle('bubble-hidden', shouldCollapseBubble());
 
         slippy.style.width = `${state.charSize.w}px`;
         slippy.style.height = `${state.charSize.h}px`;
@@ -4656,30 +4685,38 @@
       }
 
       function dockSlippy() {
-        if (state.dockState === 'docked' || state.dockState === 'dismissing') {
+        if (state.dockState === 'docked' || isSlippyTransitioning()) {
           return;
         }
-        state.dockState = 'dismissing';
+        state.dockState = 'hiding-bubble';
         state.panelMinimized = true;
+        state.pendingStepSolve = false;
         clearPendingStepSolveTimer();
         clearPendingScrollSolveTimer();
         stopBubbleAnimation();
-        startCharAnimation(getDockedCharPos(), DOCK_TRANSITION_MS);
-        startBubbleAnimation(getDockedBubblePos(), Math.max(260, DOCK_TRANSITION_MS - 40));
         requestOverlayRefresh();
         applyLayout();
         window.setTimeout(() => {
-          if (state.dockState === 'dismissing') {
-            completeDocking();
+          if (state.dockState !== 'hiding-bubble') {
+            return;
           }
+          state.dockState = 'dismissing-slippy';
+          startCharAnimation(getDockedCharPos(), DOCK_TRANSITION_MS);
+          requestOverlayRefresh();
+          applyLayout();
+          window.setTimeout(() => {
+            if (state.dockState === 'dismissing-slippy') {
+              completeDocking();
+            }
+          }, DOCK_TRANSITION_MS);
         }, DOCK_TRANSITION_MS);
       }
 
       function wakeSlippy() {
-        if (state.dockState === 'active' || state.dockState === 'launching') {
+        if (state.dockState === 'active' || isSlippyTransitioning()) {
           return;
         }
-        state.dockState = 'launching';
+        state.dockState = 'launching-slippy';
         state.panelMinimized = true;
         state.charPos = clonePos(getDockedCharPos());
         state.charTargetPos = clonePos(state.charPos);
@@ -4690,18 +4727,24 @@
         requestOverlayRefresh();
         const layout = applySolvedSceneLayout({
           animateSlippy: true,
-          placeBubbleNow: false,
+          placeBubbleNow: true,
           durationMs: DOCK_TRANSITION_MS
         });
-        const bubbleTarget = getBubbleTargetPos(layout.charPos, layout.bubbleOffset);
-        startBubbleAnimation(bubbleTarget, Math.max(280, DOCK_TRANSITION_MS - 30));
         applyLayout();
         window.setTimeout(() => {
-          if (state.dockState === 'launching') {
-            state.dockState = 'active';
-            requestOverlayRefresh();
-            applyLayout();
+          if (state.dockState !== 'launching-slippy') {
+            return;
           }
+          state.dockState = 'launching-bubble';
+          requestOverlayRefresh();
+          applyLayout();
+          window.requestAnimationFrame(() => {
+            if (state.dockState === 'launching-bubble') {
+              state.dockState = 'active';
+              requestOverlayRefresh();
+              applyLayout();
+            }
+          });
         }, DOCK_TRANSITION_MS);
       }
 
