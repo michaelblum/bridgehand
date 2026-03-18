@@ -378,81 +378,40 @@
 
     #slippyDock {
       position: absolute;
-      left: 16px;
-      top: 16px;
+      top: 10px;
+      left: 10px;
+      width: 38px;
+      height: 38px;
       z-index: 70;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px 10px 10px;
-      border: 1px solid rgba(120, 145, 170, 0.48);
       border-radius: 999px;
-      background:
-        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.92), transparent 34%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(234, 242, 249, 0.95));
-      box-shadow:
-        0 10px 28px rgba(18, 34, 52, 0.12),
-        0 1px 0 rgba(255, 255, 255, 0.82) inset;
-      color: #18314b;
-      transition:
-        transform 220ms ease,
-        box-shadow 220ms ease,
-        background 220ms ease;
+      border: 1px solid rgba(15, 23, 42, 0.35);
+      background: rgba(255, 255, 255, 0.62);
+      box-shadow: 0 2px 7px rgba(15, 23, 42, 0.3);
+      overflow: hidden;
+      padding: 0;
+      cursor: pointer;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      transition: background 180ms ease, transform 180ms ease;
     }
 
     #slippyDock:hover {
-      transform: translateY(-1px);
-      background:
-        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.96), transparent 36%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(228, 239, 248, 0.98));
-      box-shadow:
-        0 14px 32px rgba(18, 34, 52, 0.15),
-        0 1px 0 rgba(255, 255, 255, 0.86) inset;
+      background: rgba(255, 255, 255, 0.78);
     }
 
-    #slippyDockBadge {
-      width: 48px;
-      height: 48px;
-      flex: 0 0 auto;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.78), transparent 36%),
-        linear-gradient(180deg, #d7ecfb, #bcdcf3);
-      border: 1px solid rgba(112, 147, 183, 0.34);
-      overflow: hidden;
-      box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.72) inset,
-        0 6px 14px rgba(36, 78, 116, 0.12);
+    #slippyDock:active {
+      transform: translateY(1px);
     }
 
-    #slippyDockBadge img {
-      width: 42px;
-      height: 42px;
-      object-fit: contain;
+    #slippyDock img {
+      position: absolute;
+      top: -5px;
+      left: -11px;
+      width: 60px;
+      height: auto;
+      opacity: 0.95;
       -webkit-user-drag: none;
       pointer-events: none;
-    }
-
-    #slippyDockText {
-      display: grid;
-      gap: 1px;
-      text-align: left;
-      line-height: 1.1;
-    }
-
-    #slippyDockTitle {
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    #slippyDockHint {
-      font-size: 11px;
-      color: #5e748a;
-      font-weight: 600;
     }
 
     .drag-handle {
@@ -1181,13 +1140,7 @@
   <body>
   <div id="stage">
     <button id="slippyDock" type="button" aria-label="Wake Slippy">
-      <span id="slippyDockBadge" aria-hidden="true">
-        <img src="assets/slippy_show.png" alt="" />
-      </span>
-      <span id="slippyDockText">
-        <span id="slippyDockTitle">Slippy</span>
-        <span id="slippyDockHint">Wake him up</span>
-      </span>
+      <img src="assets/slippy_show.png" alt="" aria-hidden="true" />
     </button>
 
     <div id="siteScroll">
@@ -1494,8 +1447,6 @@
       const stage = document.getElementById('stage');
       const siteScroll = document.getElementById('siteScroll');
       const slippyDock = document.getElementById('slippyDock');
-      const slippyDockTitle = document.getElementById('slippyDockTitle');
-      const slippyDockHint = document.getElementById('slippyDockHint');
       const bubble = document.getElementById('bubble');
       const bubbleContent = document.getElementById('bubbleContent');
       const sightlineInk = document.getElementById('sightlineInk');
@@ -1543,6 +1494,7 @@
       };
       const BEE_ALERT_RADIUS_PX = 150;
       const BEE_DISENGAGE_RADIUS_PX = 178;
+      const BEE_WANDER_OVERSCAN_PX = 100;
       const BEE_POST_SHOO_STRESS_MS = 1500;
       const BEE_SHOO_TRIGGER_HOLD_MS = 320;
       const beeBumbleSpeedScale = 0.85;
@@ -1784,8 +1736,12 @@
           shooPhase: 0,
           calmUntil: 0,
           stressed: false,
-          angleDeg: (Math.atan2(dy, dx) * 180) / Math.PI
+        angleDeg: (Math.atan2(dy, dx) * 180) / Math.PI
         };
+      }
+
+      function isSlippyInteractableForBee() {
+        return state.dockState === 'active';
       }
 
       function stabilizeAngleDegrees(previousDeg, nextDeg) {
@@ -1980,11 +1936,8 @@
       function syncDockUi() {
         const docked = isSlippyDocked();
         const dismissing = state.dockState === 'hiding-bubble' || state.dockState === 'dismissing-slippy';
-        slippyDockTitle.textContent = docked ? 'Slippy' : 'Hide Slippy';
-        slippyDockHint.textContent = docked
-          ? 'Wake him up'
-          : (dismissing ? 'Whooshing home' : 'Send him home');
         slippyDock.setAttribute('aria-label', docked ? 'Wake Slippy' : 'Hide Slippy');
+        slippyDock.title = docked ? 'Wake Slippy' : (dismissing ? 'Whooshing home' : 'Hide Slippy');
         slippyDock.setAttribute('aria-pressed', docked ? 'false' : 'true');
       }
 
@@ -3553,12 +3506,19 @@
         };
       }
 
-      function chooseBeeBumbleTarget() {
-        const margin = 72;
-        const minX = margin;
-        const maxX = Math.max(margin, window.innerWidth - margin);
-        const minY = margin;
-        const maxY = Math.max(margin, window.innerHeight - margin);
+      function chooseBeeBumbleTarget(options = {}) {
+        const active = options.active != null ? Boolean(options.active) : isSlippyInteractableForBee();
+        const allowOffscreen = options.allowOffscreen != null ? Boolean(options.allowOffscreen) : true;
+        const preferOffscreen = options.preferOffscreen != null
+          ? Boolean(options.preferOffscreen)
+          : (!active);
+        const offscreenChance = active ? 0.24 : 1;
+        const useOffscreenTarget = allowOffscreen && (preferOffscreen || Math.random() < offscreenChance);
+        const margin = useOffscreenTarget ? BEE_WANDER_OVERSCAN_PX : 72;
+        const minX = useOffscreenTarget ? -margin : margin;
+        const maxX = useOffscreenTarget ? window.innerWidth + margin : Math.max(margin, window.innerWidth - margin);
+        const minY = useOffscreenTarget ? -margin : margin;
+        const maxY = useOffscreenTarget ? window.innerHeight + margin : Math.max(margin, window.innerHeight - margin);
         const panelRect = {
           x: state.panelPos.x,
           y: state.panelPos.y,
@@ -3580,7 +3540,8 @@
           point.y = clamp(point.y, minY, maxY);
           fallback = point;
 
-          if (!isPointInsideRect(point, panelRect, 40)) {
+          const avoidPanel = !useOffscreenTarget;
+          if (!avoidPanel || !isPointInsideRect(point, panelRect, 40)) {
             return point;
           }
         }
@@ -3589,19 +3550,19 @@
       }
 
       function clampBeeToViewport() {
-        const marginX = 38;
-        const marginY = 30;
-        state.bee.x = clamp(state.bee.x, marginX, Math.max(marginX, window.innerWidth - marginX));
-        state.bee.y = clamp(state.bee.y, marginY, Math.max(marginY, window.innerHeight - marginY));
+        const marginX = BEE_WANDER_OVERSCAN_PX;
+        const marginY = BEE_WANDER_OVERSCAN_PX;
+        state.bee.x = clamp(state.bee.x, -marginX, window.innerWidth + marginX);
+        state.bee.y = clamp(state.bee.y, -marginY, window.innerHeight + marginY);
       }
 
       function pickFarthestBeeCorner(origin) {
-        const margin = 54;
+        const margin = BEE_WANDER_OVERSCAN_PX;
         const corners = [
-          { x: margin, y: margin },
-          { x: Math.max(margin, window.innerWidth - margin), y: margin },
-          { x: margin, y: Math.max(margin, window.innerHeight - margin) },
-          { x: Math.max(margin, window.innerWidth - margin), y: Math.max(margin, window.innerHeight - margin) }
+          { x: -margin, y: -margin },
+          { x: window.innerWidth + margin, y: -margin },
+          { x: -margin, y: window.innerHeight + margin },
+          { x: window.innerWidth + margin, y: window.innerHeight + margin }
         ];
 
         return corners.reduce((furthest, corner) => {
@@ -3670,6 +3631,27 @@
         state.bee.calmUntil = nowMs + BEE_POST_SHOO_STRESS_MS;
       }
 
+      function sendBeeOffscreen(nowMs, options = {}) {
+        const nextTarget = chooseBeeBumbleTarget({
+          active: false,
+          allowOffscreen: true,
+          preferOffscreen: true
+        });
+        const dx = nextTarget.x - state.bee.x;
+        const dy = nextTarget.y - state.bee.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const driftSpeed = options.fast ? 10 : 6.5;
+        state.bee.mode = 'flee';
+        state.bee.targetX = nextTarget.x;
+        state.bee.targetY = nextTarget.y;
+        state.bee.vx = (dx / dist) * driftSpeed;
+        state.bee.vy = (dy / dist) * driftSpeed;
+        state.bee.approachStartedAt = 0;
+        state.bee.shooStartedAt = 0;
+        state.bee.shooUntil = 0;
+        state.bee.calmUntil = Math.max(nowMs + 600, state.bee.calmUntil || 0);
+      }
+
       function startBeeApproach(nowMs) {
         const headPoint = getSlippyHeadPoint();
         const dx = state.bee.x - headPoint.x;
@@ -3707,7 +3689,7 @@
       }
 
       function cancelBeeApproach(nowMs) {
-        const nextTarget = chooseBeeBumbleTarget();
+        const nextTarget = chooseBeeBumbleTarget({ active: true });
         state.bee.mode = 'bumble';
         state.bee.approachStartedAt = 0;
         state.bee.targetX = nextTarget.x;
@@ -3721,21 +3703,29 @@
           return false;
         }
 
+        const activeForBee = isSlippyInteractableForBee();
         const headPoint = getSlippyHeadPoint();
         const previousX = state.bee.x;
         const previousY = state.bee.y;
         const beeDistanceToHead = Math.hypot(state.bee.x - headPoint.x, state.bee.y - headPoint.y);
 
-        if (state.bee.mode === 'bumble' && beeDistanceToHead <= BEE_ALERT_RADIUS_PX) {
+        if (!activeForBee) {
+          if (state.bee.mode !== 'flee' || beeDistanceToHead < (BEE_ALERT_RADIUS_PX * 1.5)) {
+            sendBeeOffscreen(nowMs, { fast: true });
+          }
+        }
+
+        if (activeForBee && state.bee.mode === 'bumble' && beeDistanceToHead <= BEE_ALERT_RADIUS_PX) {
           startBeeApproach(nowMs);
         }
 
-        if (state.bee.mode === 'approach' && beeDistanceToHead >= BEE_DISENGAGE_RADIUS_PX) {
+        if (activeForBee && state.bee.mode === 'approach' && beeDistanceToHead >= BEE_DISENGAGE_RADIUS_PX) {
           cancelBeeApproach(nowMs);
         }
 
         if (
-          state.bee.mode === 'approach'
+          activeForBee
+          && state.bee.mode === 'approach'
           && beeDistanceToHead <= 30
           && (nowMs - state.bee.approachStartedAt) >= BEE_SHOO_TRIGGER_HOLD_MS
         ) {
@@ -3780,12 +3770,16 @@
           state.bee.vx = lerp(state.bee.vx, (dx / dist) * fleeSpeed, 0.24);
           state.bee.vy = lerp(state.bee.vy, (dy / dist) * fleeSpeed, 0.24);
           if (dist <= 26) {
-            const nextTarget = chooseBeeBumbleTarget();
+            const nextTarget = chooseBeeBumbleTarget({
+              active: activeForBee,
+              allowOffscreen: true,
+              preferOffscreen: !activeForBee
+            });
             state.bee.mode = 'bumble';
             state.bee.targetX = nextTarget.x;
             state.bee.targetY = nextTarget.y;
-            state.bee.nextRetargetAt = nowMs + randomRange(500, 1200);
-            state.bee.calmUntil = 0;
+            state.bee.nextRetargetAt = nowMs + randomRange(activeForBee ? 900 : 1400, activeForBee ? 2200 : 3200);
+            state.bee.calmUntil = activeForBee ? 0 : Math.max(nowMs + 400, state.bee.calmUntil || 0);
           }
         } else {
           const dx = state.bee.targetX - state.bee.x;
@@ -3793,10 +3787,14 @@
           const dist = Math.hypot(dx, dy);
 
           if (dist <= 38 || nowMs >= state.bee.nextRetargetAt) {
-            const nextTarget = chooseBeeBumbleTarget();
+            const nextTarget = chooseBeeBumbleTarget({
+              active: activeForBee,
+              allowOffscreen: true,
+              preferOffscreen: !activeForBee
+            });
             state.bee.targetX = nextTarget.x;
             state.bee.targetY = nextTarget.y;
-            state.bee.nextRetargetAt = nowMs + randomRange(520, 1350);
+            state.bee.nextRetargetAt = nowMs + randomRange(activeForBee ? 700 : 1200, activeForBee ? 1900 : 3200);
           }
 
           const desiredAngle = Math.atan2(state.bee.targetY - state.bee.y, state.bee.targetX - state.bee.x);
@@ -3817,15 +3815,15 @@
         }
         state.bee.stressed = state.bee.mode === 'approach'
           || state.bee.mode === 'shoo'
-          || (nowMs < (state.bee.calmUntil || 0))
-          || (state.bee.mode !== 'flee' && Math.hypot(state.bee.x - headPoint.x, state.bee.y - headPoint.y) <= 120);
+          || (activeForBee && nowMs < (state.bee.calmUntil || 0))
+          || (activeForBee && state.bee.mode !== 'flee' && Math.hypot(state.bee.x - headPoint.x, state.bee.y - headPoint.y) <= 120);
         syncSlippyBodyImage();
         renderBee();
         return true;
       }
 
       function isBeeInterruptingTour(nowMs = getNowMs()) {
-        return Boolean(state.bee && (
+        return Boolean(isSlippyInteractableForBee() && state.bee && (
           state.bee.mode === 'approach'
           || state.bee.mode === 'shoo'
           || nowMs < (state.bee.calmUntil || 0)
@@ -3833,7 +3831,7 @@
       }
 
       function isBeeShooing(nowMs) {
-        return Boolean(state.bee && state.bee.mode === 'shoo' && nowMs < state.bee.shooUntil);
+        return Boolean(isSlippyInteractableForBee() && state.bee && state.bee.mode === 'shoo' && nowMs < state.bee.shooUntil);
       }
 
       function calculateSmartTail() {
