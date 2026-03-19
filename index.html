@@ -1349,7 +1349,7 @@
       </button>
     </div>
 
-    <svg id="bee" viewBox="0 0 64 44" aria-hidden="true">
+    <svg id="bee" viewBox="0 0 64 44" aria-hidden="true" hidden>
       <ellipse class="bee-wing bee-wing-left" cx="25" cy="11.5" rx="10.5" ry="7"></ellipse>
       <ellipse class="bee-wing bee-wing-right" cx="40" cy="11.5" rx="10.5" ry="7"></ellipse>
       <line class="bee-antenna" x1="15" y1="17" x2="10" y2="9"></line>
@@ -3668,6 +3668,7 @@
       }
 
       function renderBee() {
+        bee.hidden = state.bee.visible === false;
         bee.style.display = state.bee.visible === false ? 'none' : 'block';
         if (state.bee.visible === false) {
           document.documentElement.dataset.beeMode = state.bee.mode;
